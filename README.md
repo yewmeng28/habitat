@@ -17,4 +17,4 @@ For GitHub Pages, build with `VITE_BASE_PATH=/<repo-name>/ npm run build`.
 
 ## Status
 
-Phases 1 (habit tracker) and 2 (focus timer, tree planting, Woodland Sanctuary) are implemented. Collection, wildlife and cloud sync are planned.
+Phases 1 (habit tracker), 2 (focus timer, tree planting, Woodland Sanctuary) and 3 (collection, unlock rules, wildlife, achievements, forest overview) are implemented. Cloud sync and further biomes are planned.

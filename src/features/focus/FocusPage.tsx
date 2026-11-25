@@ -3,11 +3,12 @@ import { Link } from 'react-router'
 import { TreePreview } from '../../components/TreePreview'
 import { SPECIES, getSpecies } from '../../data/species'
 import {
-  MAX_MINUTES, MIN_MINUTES, PRESET_MINUTES, formatClock, isFinished, isSpeciesUnlocked,
+  MAX_MINUTES, MIN_MINUTES, PRESET_MINUTES, formatClock, isFinished,
   progress, remainingMs, stageForProgress,
 } from '../../domain/focus'
-import { fromDateKey, toDateKey } from '../../domain/dates'
+import { fromDateKey, toDateKey, todayKey } from '../../domain/dates'
 import type { FocusSession } from '../../domain/types'
+import { computeStats, requirementText, ruleProgress } from '../../domain/progress'
 import type { AppData } from '../../hooks'
 import {
   completeSession, interruptSession, pauseSession, resumeSession, settleOpenSession, startSession,
@@ -43,6 +44,10 @@ export function FocusPage({ data }: { data: AppData }) {
   const [error, setError] = useState('')
   const [justPlanted, setJustPlanted] = useState<FocusSession | null>(null)
   const now = useNow(!!open)
+  const stats = useMemo(
+    () => computeStats({ sessions: data.focusSessions, trees: data.plantedTrees, habits: data.habits, completions: data.completions, today: todayKey() }),
+    [data.focusSessions, data.plantedTrees, data.habits, data.completions],
+  )
 
   // Finish sessions whose time ran out (including while the app was closed or the phone asleep).
   useEffect(() => {
@@ -125,7 +130,7 @@ export function FocusPage({ data }: { data: AppData }) {
         <h2>Choose a tree</h2>
         <div className="species-grid" role="radiogroup" aria-label="Tree species">
           {SPECIES.map((sp) => {
-            const unlocked = isSpeciesUnlocked(sp, completed.length)
+            const unlocked = ruleProgress(sp.unlock, stats).met
             return (
               <button
                 key={sp.id}
@@ -137,7 +142,7 @@ export function FocusPage({ data }: { data: AppData }) {
               >
                 <TreePreview speciesId={sp.id} stage="mature" scale={2} label={sp.name} />
                 <strong>{sp.name}</strong>
-                <span className="small muted">{unlocked ? sp.rarity : `${sp.unlockSessions - completed.length} more session${sp.unlockSessions - completed.length === 1 ? '' : 's'}`}</span>
+                <span className="small muted">{unlocked ? sp.rarity : requirementText(sp.unlock)}</span>
               </button>
             )
           })}

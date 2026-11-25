@@ -94,6 +94,28 @@ export interface PlantedTree extends BaseRecord {
   focusSessionId: string
 }
 
+// ---- Collection & progression ----
+
+/** A data-driven unlock condition, shared by species, wildlife and achievements. */
+export type Rule =
+  | { type: 'always' }
+  | { type: 'sessions'; n: number } // completed focus sessions
+  | { type: 'hours'; n: number } // total focused hours
+  | { type: 'trees'; n: number } // total planted trees
+  | { type: 'species-trees'; speciesId: string; n: number }
+  | { type: 'area-trees'; n: number } // trees in a single area (density)
+  | { type: 'species-discovered'; n: number } // distinct tree species unlocked
+  | { type: 'habit-streak'; n: number } // best current habit streak
+
+export type DiscoveryKind = 'species' | 'wildlife' | 'achievement'
+
+/** First-time discovery of an item. Unique per kind+itemId, so awarding is idempotent. */
+export interface Discovery extends BaseRecord {
+  kind: DiscoveryKind
+  itemId: string
+  points: number // Discovery Points granted
+}
+
 export interface Preferences extends BaseRecord {
   // fixed id 'preferences'
   weekStartsOn: 0 | 1

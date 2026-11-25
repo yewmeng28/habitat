@@ -5,12 +5,23 @@ import { ChallengesPage } from './features/challenges/ChallengesPage'
 import { GrowthPage } from './features/growth/GrowthPage'
 import { InsightsPage } from './features/insights/InsightsPage'
 import { SettingsPage } from './features/settings/SettingsPage'
-import { ComingSoon } from './components/ComingSoon'
+import { CollectionPage } from './features/collection/CollectionPage'
+import { syncDiscoveries } from './persistence/progressRepo'
+import { useEffect, useState } from 'react'
+import { getSpecies } from './data/species'
+import { getWildlife, ACHIEVEMENTS } from './data/collection'
+import type { Discovery } from './domain/types'
 import { FocusPage } from './features/focus/FocusPage'
 import { HabitatPage } from './features/habitat/HabitatPage'
 
 // Dev-only: import.meta.env.DEV is statically false in production builds, so this module is dropped from the bundle.
 const DevToolsPage = import.meta.env.DEV ? lazy(() => import('./dev/DevToolsPage')) : null
+
+function describe(d: Discovery): string {
+  if (d.kind === 'species') return `${getSpecies(d.itemId)?.name ?? d.itemId} unlocked`
+  if (d.kind === 'wildlife') return `${getWildlife(d.itemId)?.name ?? d.itemId} arrived`
+  return ACHIEVEMENTS.find((a) => a.id === d.itemId)?.name ?? d.itemId
+}
 
 const NAV = [
   { to: '/habitat', label: 'Habitat', icon: 'M12 3 4 20h16L12 3Zm0 6 4 8H8l4-8Z' },
@@ -23,6 +34,17 @@ const NAV = [
 
 export default function App() {
   const data = useAppData()
+  const [toast, setToast] = useState<Discovery[]>([])
+
+  // Record anything newly earned whenever progress changes. Idempotent, so repeat runs are harmless.
+  const progressKey = data ? `${data.plantedTrees.length}|${data.focusSessions.length}|${data.completions.length}|${data.habits.length}` : ''
+  useEffect(() => {
+    if (!progressKey) return
+    syncDiscoveries()
+      .then((created) => created.length && setToast((t) => [...t, ...created]))
+      .catch(() => {})
+  }, [progressKey])
+
   const energy = data?.ledger.reduce((s, l) => s + l.amount, 0) ?? 0
 
   return (
@@ -62,6 +84,16 @@ export default function App() {
             <strong>{energy}</strong> NE
           </div>
         </header>
+        {toast.length > 0 && (
+          <div className="toast" role="status">
+            <div>
+              <strong>{toast.length === 1 ? 'New discovery!' : `${toast.length} new discoveries!`}</strong>
+              <p className="small">{toast.slice(0, 3).map(describe).join(' · ')}{toast.length > 3 ? ' …' : ''}</p>
+            </div>
+            <NavLink to="/collection" className="btn" onClick={() => setToast([])}>View</NavLink>
+            <button className="btn" onClick={() => setToast([])} aria-label="Dismiss">✕</button>
+          </div>
+        )}
         {!data ? (
           <p className="muted pad">Loading…</p>
         ) : (
@@ -73,10 +105,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/habitat" element={<HabitatPage data={data} />} />
             <Route path="/focus" element={<FocusPage data={data} />} />
-            <Route
-              path="/collection"
-              element={<ComingSoon title="Collection" phase="Phase 3" text="Species, wildlife and discoveries will be collected here." />}
-            />
+            <Route path="/collection" element={<CollectionPage data={data} />} />
             {DevToolsPage && (
               <Route path="/test" element={<Suspense fallback={null}><DevToolsPage data={data} /></Suspense>} />
             )}

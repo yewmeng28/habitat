@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SPECIES } from '../data/species'
 import type { AppData } from '../hooks'
-import { addEnergy, clearWoodland, finishOpenSession, plantInstantly, wipeEverything } from './devTools'
+import { addEnergy, clearDiscoveries, clearWoodland, finishOpenSession, plantInstantly, wipeEverything } from './devTools'
 
 export default function DevToolsPage({ data }: { data: AppData }) {
   const [species, setSpecies] = useState('oak')
@@ -50,6 +50,7 @@ export default function DevToolsPage({ data }: { data: AppData }) {
         <h2>Session and rewards</h2>
         <div className="row">
           <button className="btn" onClick={() => run('Finished current session', async () => ((await finishOpenSession()) ? 1 : 0))}>Finish current session now</button>
+          <button className="btn" onClick={() => run('Cleared discoveries (they will re-unlock)', clearDiscoveries)}>Reset discoveries</button>
           <button className="btn" onClick={() => run('Added 100 NE', () => addEnergy(100))}>+100 NE</button>
         </div>
       </div>

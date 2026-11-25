@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { todayKey } from './domain/dates'
 import type {
-  Challenge, ChallengeRecord, FocusSession, Habit, HabitCompletion, LedgerEntry, PlantedTree,
+  Challenge, ChallengeRecord, Discovery, FocusSession, Habit, HabitCompletion, LedgerEntry, PlantedTree,
 } from './domain/types'
 import { db } from './persistence/db'
 
@@ -14,6 +14,7 @@ export interface AppData {
   ledger: LedgerEntry[]
   focusSessions: FocusSession[]
   plantedTrees: PlantedTree[]
+  discoveries: Discovery[]
   weekStartsOn: 0 | 1
 }
 
@@ -21,7 +22,7 @@ export interface AppData {
 export function useAppData(): AppData | undefined {
   return useLiveQuery(async () => {
     const live = <T extends { deletedAt: string | null }>(r: T) => !r.deletedAt
-    const [habits, completions, challenges, challengeRecords, ledger, prefs, focusSessions, plantedTrees] = await Promise.all([
+    const [habits, completions, challenges, challengeRecords, ledger, prefs, focusSessions, plantedTrees, discoveries] = await Promise.all([
       db.habits.toArray(),
       db.completions.toArray(),
       db.challenges.toArray(),
@@ -30,6 +31,7 @@ export function useAppData(): AppData | undefined {
       db.preferences.get('preferences'),
       db.focusSessions.toArray(),
       db.plantedTrees.toArray(),
+      db.discoveries.toArray(),
     ])
     return {
       habits: habits.filter(live),
@@ -39,6 +41,7 @@ export function useAppData(): AppData | undefined {
       ledger: ledger.filter(live),
       focusSessions: focusSessions.filter(live),
       plantedTrees: plantedTrees.filter(live),
+      discoveries: discoveries.filter(live),
       weekStartsOn: prefs?.weekStartsOn ?? 1,
     }
   }, [])

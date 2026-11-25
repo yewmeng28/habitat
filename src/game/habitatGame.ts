@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GrowthStage } from '../domain/types'
-import { SPRITE_H, SPRITE_W, WORLD_H, WORLD_W, groundCanvas, treeCanvas } from './pixel'
+import { SPRITE_H, SPRITE_W, WORLD_H, WORLD_W, groundCanvas, treeCanvas, wildlifeCanvas } from './pixel'
 
 /** The only data the game sees: plain view models. No React, no database, no sync. */
 export interface TreeView {
@@ -11,11 +11,20 @@ export interface TreeView {
   y: number
 }
 
+export type Behaviour = 'flutter' | 'hop' | 'perch'
+
+export interface WildlifeView {
+  id: string
+  behaviour: Behaviour
+  count: number
+}
+
 export interface AreaView {
   key: string // unique per area, also used to seed its terrain
   seed: number
   palette: { grass: string[]; path: string }
   trees: TreeView[]
+  wildlife: WildlifeView[]
 }
 
 export interface HabitatGameApi {
@@ -25,6 +34,21 @@ export interface HabitatGameApi {
 
 interface Options {
   onSelectTree: (id: string | null) => void
+}
+
+interface Critter {
+  s: Phaser.GameObjects.Image
+  behaviour: Behaviour
+  wait: number
+  t: number
+  dur: number
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+  arc: number
+  flap: number
+  phase: number
 }
 
 const MARGIN = 24
@@ -39,6 +63,9 @@ class WoodlandScene extends Phaser.Scene {
   private selectedId: string | null = null
   private currentKey = ''
   private ambient: Phaser.GameObjects.GameObject[] = []
+  private critters: Critter[] = []
+  private wildlifeKey = ''
+  private treePoints: { x: number; y: number }[] = []
   private fitZoom = 1
   private dragged = false
   private pinchDist = 0
@@ -114,6 +141,84 @@ class WoodlandScene extends Phaser.Scene {
         s.destroy()
         this.treeSprites.delete(id)
       }
+
+    this.treePoints = [...this.treeSprites.values()].map((s) => ({ x: s.x, y: s.y - SPRITE_H * 0.55 }))
+    // rebuild critters only when the set of wildlife (or the area) changes, so they don't jump on every new tree
+    const wKey = `${area.key}|${area.wildlife.map((w) => `${w.id}x${w.count}`).join(',')}`
+    if (wKey !== this.wildlifeKey) {
+      this.wildlifeKey = wKey
+      this.spawnWildlife(area.wildlife)
+    }
+  }
+
+  private spawnWildlife(list: WildlifeView[]) {
+    this.critters.forEach((c) => c.s.destroy())
+    this.critters = []
+    for (const w of list) {
+      const key = this.texture(`wild:${w.id}`, () => wildlifeCanvas(w.id))
+      for (let i = 0; i < w.count; i++) {
+        const x = MARGIN + Math.random() * (WORLD_W - 2 * MARGIN)
+        const y = MARGIN + Math.random() * (WORLD_H - 2 * MARGIN)
+        const s = this.add.image(Math.round(x), Math.round(y), key).setOrigin(0.5, 1).setDepth(y)
+        this.critters.push({ s, behaviour: w.behaviour, wait: Math.random() * 2000, t: 0, dur: 0, x0: x, y0: y, x1: x, y1: y, arc: 0, flap: 0, phase: Math.random() * 6 })
+      }
+    }
+  }
+
+  update(_time: number, delta: number) {
+    for (const c of this.critters) this.stepCritter(c, delta)
+  }
+
+  private pickTarget(c: Critter) {
+    c.x0 = c.s.x
+    c.y0 = c.s.y
+    if (c.behaviour === 'perch' && this.treePoints.length && Math.random() < 0.85) {
+      const p = this.treePoints[Math.floor(Math.random() * this.treePoints.length)]
+      c.x1 = p.x + (Math.random() - 0.5) * 8
+      c.y1 = p.y
+      c.dur = 900 + Math.hypot(c.x1 - c.x0, c.y1 - c.y0) * 14
+      c.arc = 10
+    } else if (c.behaviour === 'hop') {
+      const ang = Math.random() * Math.PI * 2
+      c.x1 = Phaser.Math.Clamp(c.x0 + Math.cos(ang) * (10 + Math.random() * 16), MARGIN, WORLD_W - MARGIN)
+      c.y1 = Phaser.Math.Clamp(c.y0 + Math.sin(ang) * (6 + Math.random() * 10), MARGIN + 12, WORLD_H - MARGIN)
+      c.dur = 320
+      c.arc = 4
+    } else {
+      c.x1 = MARGIN + Math.random() * (WORLD_W - 2 * MARGIN)
+      c.y1 = MARGIN + Math.random() * (WORLD_H - 2 * MARGIN)
+      c.dur = 2200 + Math.random() * 2600
+      c.arc = 0
+    }
+    c.t = 0
+    if (Math.abs(c.x1 - c.x0) > 1) c.s.setFlipX(c.x1 < c.x0)
+  }
+
+  private stepCritter(c: Critter, dt: number) {
+    if (c.wait > 0) {
+      c.wait -= dt
+      return
+    }
+    if (c.dur === 0) this.pickTarget(c)
+    c.t += dt
+    const p = Math.min(1, c.t / c.dur)
+    const e = c.behaviour === 'flutter' ? p : p * p * (3 - 2 * p)
+    let x = c.x0 + (c.x1 - c.x0) * e
+    let y = c.y0 + (c.y1 - c.y0) * e - Math.sin(Math.PI * p) * c.arc
+    if (c.behaviour === 'flutter') {
+      c.phase += dt / 260
+      x += Math.cos(c.phase * 1.3) * 5
+      y += Math.sin(c.phase) * 4
+      c.flap += dt
+      c.s.setScale(1, c.flap % 240 < 120 ? 1 : 0.65)
+    }
+    c.s.setPosition(Math.round(x), Math.round(y))
+    // flyers draw above the trees, ground animals sort with them by y
+    c.s.setDepth(c.behaviour === 'hop' ? y : 50000 + y)
+    if (p >= 1) {
+      c.dur = 0
+      c.wait = c.behaviour === 'hop' ? 400 + Math.random() * 2200 : c.behaviour === 'perch' ? 1500 + Math.random() * 3500 : 200 + Math.random() * 600
+    }
   }
 
   private buildAmbient(seed: number) {

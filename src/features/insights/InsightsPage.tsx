@@ -36,7 +36,11 @@ export function InsightsPage({ data }: { data: AppData }) {
     return { c, met: statuses.filter((s) => s === 'met').length, logged: statuses.filter((s) => s !== 'none').length }
   })
 
-  const hasAny = data.habits.length > 0 || data.challenges.length > 0
+  const doneSessions = data.focusSessions.filter((x) => x.status === 'completed')
+  const periodSessions = doneSessions.filter((x) => x.startedAt.slice(0, 10) >= from)
+  const focusHours = (list: typeof doneSessions) => list.reduce((a, x) => a + x.plannedSeconds, 0) / 3600
+  const speciesDiscovered = data.discoveries.filter((d) => d.kind === 'species').length
+  const hasAny = data.habits.length > 0 || data.challenges.length > 0 || data.focusSessions.length > 0
 
   return (
     <section className="page">
@@ -61,6 +65,15 @@ export function InsightsPage({ data }: { data: AppData }) {
             <div className="card tile"><span className="tile-value">{periodNE}</span><span className="muted small">NE this period</span></div>
             <div className="card tile"><span className="tile-value">{totalNE}</span><span className="muted small">NE all time</span></div>
           </div>
+
+          {doneSessions.length > 0 && (
+            <div className="tiles four">
+              <div className="card tile"><span className="tile-value">{focusHours(periodSessions).toFixed(1)}</span><span className="muted small">Focus hours</span></div>
+              <div className="card tile"><span className="tile-value">{doneSessions.length}</span><span className="muted small">Sessions total</span></div>
+              <div className="card tile"><span className="tile-value">{data.plantedTrees.length}</span><span className="muted small">Trees planted</span></div>
+              <div className="card tile"><span className="tile-value">{speciesDiscovered}</span><span className="muted small">Species found</span></div>
+            </div>
+          )}
 
           <div className="card">
             <h2>Nature Energy earned</h2>

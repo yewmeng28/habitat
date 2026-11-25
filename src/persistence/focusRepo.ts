@@ -7,12 +7,13 @@ import {
   elapsedMs,
   finishTimeMs,
   isFinished,
-  isSpeciesUnlocked,
   sessionReward,
 } from '../domain/focus'
 import type { FocusSession, PlantedTree } from '../domain/types'
 import { areaDef, parseAreaId } from '../data/biomes'
 import { assignArea, slotPosition } from '../domain/woodland'
+import { computeStats, isSpeciesUnlockedBy } from '../domain/progress'
+import { todayKey } from '../domain/dates'
 import { db } from './db'
 import { newBase } from './repo'
 
@@ -26,6 +27,17 @@ export async function completedSessionCount(): Promise<number> {
   return db.focusSessions.where('status').equals('completed').filter((s) => !s.deletedAt).count()
 }
 
+/** Current progression stats, computed from stored records. */
+export async function currentStats() {
+  const [sessions, trees, habits, completions] = await Promise.all([
+    listSessions(),
+    listTrees(),
+    db.habits.filter((h) => !h.deletedAt).toArray(),
+    db.completions.filter((c) => !c.deletedAt).toArray(),
+  ])
+  return computeStats({ sessions, trees, habits, completions, today: todayKey() })
+}
+
 export async function getOpenSession(): Promise<FocusSession | undefined> {
   const open = await db.focusSessions.where('status').anyOf('active', 'paused').filter((s) => !s.deletedAt).toArray()
   return open[0]
@@ -36,10 +48,9 @@ export async function startSession(speciesId: string, minutes: number, biomeId =
   if (!species || !species.biomes.includes(biomeId)) throw new Error('That tree cannot be planted here.')
   if (!Number.isInteger(minutes) || minutes < MIN_MINUTES || minutes > MAX_MINUTES)
     throw new Error(`Choose between ${MIN_MINUTES} and ${MAX_MINUTES} minutes.`)
-  return db.transaction('rw', db.focusSessions, async () => {
+  return db.transaction('rw', [db.focusSessions, db.plantedTrees, db.habits, db.completions], async () => {
     if (await getOpenSession()) throw new Error('A focus session is already in progress.')
-    const completed = await completedSessionCount()
-    if (!isSpeciesUnlocked(species, completed)) throw new Error(`${species.name} is not unlocked yet.`)
+    if (!isSpeciesUnlockedBy(species.id, await currentStats())) throw new Error(`${species.name} is not unlocked yet.`)
     const session: FocusSession = {
       ...newBase(),
       speciesId,

@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import type {
   Challenge,
   ChallengeRecord,
+  Discovery,
   FocusSession,
   Habit,
   HabitCompletion,
@@ -23,6 +24,7 @@ export class HabitatDB extends Dexie {
   preferences!: EntityTable<Preferences, 'id'>
   focusSessions!: EntityTable<FocusSession, 'id'>
   plantedTrees!: EntityTable<PlantedTree, 'id'>
+  discoveries!: EntityTable<Discovery, 'id'>
 
   constructor(name = 'habitat') {
     super(name)
@@ -38,6 +40,10 @@ export class HabitatDB extends Dexie {
     this.version(2).stores({
       focusSessions: 'id, status, updatedAt',
       plantedTrees: 'id, &focusSessionId, areaId, updatedAt',
+    })
+    // v3 (Phase 3): first-time discoveries (species, wildlife, achievements), unique per item.
+    this.version(3).stores({
+      discoveries: 'id, &[kind+itemId], updatedAt',
     })
   }
 }

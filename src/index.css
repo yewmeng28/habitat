@@ -201,3 +201,25 @@ input, select {
 .area-tabs { flex-wrap: nowrap; overflow-x: auto; }
 .area-tabs .chip { white-space: nowrap; padding: 0 14px; }
 a.btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+/* ---------- Collection, overview, toast ---------- */
+.overview { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.ov-area { display: flex; flex-direction: column; gap: 2px; padding: 6px; text-align: left; background: var(--surface); border: 2px solid var(--line); border-radius: 12px; color: var(--ink); font: inherit; cursor: pointer; }
+.ov-area.on { border-color: var(--green); }
+.ov-area.locked { cursor: default; opacity: .65; }
+.ov-area svg { width: 100%; border-radius: 6px; image-rendering: pixelated; }
+.ov-name { font-weight: 600; font-size: .9rem; }
+.seg.wide { display: flex; } .seg.wide button { flex: 1; padding: 0 6px; }
+.grid-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.item { display: flex; gap: 12px; align-items: center; }
+.item-art { width: 72px; min-height: 72px; display: flex; align-items: flex-end; justify-content: center; flex-shrink: 0; }
+.item-body { min-width: 0; flex: 1; }
+.silhouette canvas { filter: brightness(0) opacity(.35); }
+.rarity { margin-left: 8px; font-size: .7rem; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
+.rarity.rare { color: var(--accent); }
+.meter.slim { height: 6px; max-width: none; margin: 4px 0; }
+.medal { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); border: 4px solid color-mix(in srgb, var(--accent) 60%, #000); align-self: center; }
+.medal.off { background: var(--line); border-color: var(--line); opacity: .6; }
+.toast { position: sticky; top: calc(env(safe-area-inset-top) + 8px); z-index: 20; margin: 8px 16px 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+.toast > div { flex: 1; min-width: 0; }
+.tiles.four { grid-template-columns: repeat(2, 1fr); } @media (min-width: 560px) { .tiles.four { grid-template-columns: repeat(4, 1fr); } }

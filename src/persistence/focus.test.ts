@@ -93,3 +93,24 @@ describe('zero-length sessions (dev tools)', () => {
     expect(parsed.ok).toBe(true)
   })
 })
+
+describe('discoveries persistence', () => {
+  it('records each discovery once, even if sync runs repeatedly or concurrently', async () => {
+    const { syncDiscoveries, listDiscoveries } = await import('./progressRepo')
+    const s = await startSession('oak', 15)
+    await completeSession(s.id, later(16 * 60_000))
+    const [a, b] = await Promise.all([syncDiscoveries(), syncDiscoveries()])
+    const again = await syncDiscoveries()
+    expect(a.length + b.length).toBe((await listDiscoveries()).length)
+    expect(again).toEqual([])
+    const ids = (await listDiscoveries()).map((d) => `${d.kind}:${d.itemId}`)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids).toContain('wildlife:songbird')
+  })
+  it('unlocks Maple for planting once 8 trees exist', async () => {
+    const { plantInstantly } = await import('../dev/devTools')
+    await expect(startSession('maple', 15)).rejects.toThrow(/not unlocked/)
+    await plantInstantly('oak', 8, 1)
+    await expect(startSession('maple', 15)).resolves.toBeTruthy()
+  })
+})

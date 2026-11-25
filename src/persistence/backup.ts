@@ -4,7 +4,7 @@ import { isValidDateKey } from '../domain/dates'
 import { db } from './db'
 
 export const BACKUP_FORMAT = 'habitat-backup'
-export const BACKUP_VERSION = 2
+export const BACKUP_VERSION = 3
 
 const base = {
   id: z.string().min(1),
@@ -79,6 +79,12 @@ const plantedTree = z.object({
   position: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }),
   focusSessionId: z.string().min(1),
 })
+const discovery = z.object({
+  ...base,
+  kind: z.enum(['species', 'wildlife', 'achievement']),
+  itemId: z.string().min(1),
+  points: z.number().min(0),
+})
 const preferences = z.object({ ...base, weekStartsOn: z.union([z.literal(0), z.literal(1)]) })
 
 export const backupSchema = z.object({
@@ -95,12 +101,13 @@ export const backupSchema = z.object({
     // Added in backup version 2; version 1 files simply have none.
     focusSessions: z.array(focusSession).default([]),
     plantedTrees: z.array(plantedTree).default([]),
+    discoveries: z.array(discovery).default([]),
   }),
 })
 export type Backup = z.infer<typeof backupSchema>
 
 export async function exportBackup(): Promise<Backup> {
-  const [habits, completions, challenges, challengeRecords, ledgerRows, prefs, focusSessions, plantedTrees] = await Promise.all([
+  const [habits, completions, challenges, challengeRecords, ledgerRows, prefs, focusSessions, plantedTrees, discoveries] = await Promise.all([
     db.habits.toArray(),
     db.completions.toArray(),
     db.challenges.toArray(),
@@ -109,6 +116,7 @@ export async function exportBackup(): Promise<Backup> {
     db.preferences.toArray(),
     db.focusSessions.toArray(),
     db.plantedTrees.toArray(),
+    db.discoveries.toArray(),
   ])
   return {
     format: BACKUP_FORMAT,
@@ -123,6 +131,7 @@ export async function exportBackup(): Promise<Backup> {
       preferences: prefs,
       focusSessions,
       plantedTrees,
+      discoveries,
     },
   }
 }
@@ -204,7 +213,7 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
   const d = backup.data
   await db.transaction(
     'rw',
-    [db.habits, db.completions, db.challenges, db.challengeRecords, db.ledger, db.preferences, db.focusSessions, db.plantedTrees],
+    [db.habits, db.completions, db.challenges, db.challengeRecords, db.ledger, db.preferences, db.focusSessions, db.plantedTrees, db.discoveries],
     async () => {
       if (mode === 'replace') {
         await Promise.all([
@@ -216,6 +225,7 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
           db.preferences.clear(),
           db.focusSessions.clear(),
           db.plantedTrees.clear(),
+          db.discoveries.clear(),
         ])
         await db.habits.bulkAdd(d.habits)
         await db.completions.bulkAdd(d.completions)
@@ -225,10 +235,11 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
         await db.preferences.bulkAdd(d.preferences)
         await db.focusSessions.bulkAdd(d.focusSessions)
         await db.plantedTrees.bulkAdd(d.plantedTrees)
+        await db.discoveries.bulkAdd(d.discoveries)
         tally.added =
           d.habits.length + d.completions.length + d.challenges.length +
           d.challengeRecords.length + d.ledger.length + d.preferences.length +
-          d.focusSessions.length + d.plantedTrees.length
+          d.focusSessions.length + d.plantedTrees.length + d.discoveries.length
         return
       }
       await mergeTable(db.habits, d.habits, null, tally)
@@ -239,6 +250,7 @@ export async function importBackup(backup: Backup, mode: 'replace' | 'merge'): P
       await mergeTable(db.preferences, d.preferences, null, tally)
       await mergeTable(db.focusSessions, d.focusSessions, null, tally)
       await mergeTable(db.plantedTrees, d.plantedTrees, (r) => r.focusSessionId, tally)
+      await mergeTable(db.discoveries, d.discoveries, (r) => `${r.kind}:${r.itemId}`, tally)
     },
   )
   return tally

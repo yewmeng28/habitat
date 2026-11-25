@@ -157,6 +157,138 @@ const SPECIES: Record<string, Species> = {
   },
 }
 
+
+// ---- more species (added to the same table) ----
+SPECIES.maple = {
+  // Wide, low, dense dome in red-orange, with a few bright leaves.
+  leaf: ['#9a3a22', '#c9552e', '#e98a4a'],
+  soil: '#6b4a2b',
+  draw(ctx, s) {
+    const th = Math.round(13 * s)
+    trunk(ctx, 16, 47, s < 0.6 ? 3 : 4, th, '#6a4630', '#4a2f20')
+    const ty = 47 - th
+    const c = SPECIES.maple.leaf
+    blob(ctx, 16 - 9 * s, ty - 1 * s, 6 * s, c)
+    blob(ctx, 16 + 9 * s, ty - 1 * s, 6 * s, c)
+    blob(ctx, 16, ty - 6 * s, 9 * s, c)
+    blob(ctx, 16 - 4 * s, ty - 11 * s, 6 * s, c)
+    blob(ctx, 16 + 5 * s, ty - 10 * s, 5 * s, c)
+    if (s > 0.9) for (const [x, y] of [[7, 44], [24, 45], [12, 46], [20, 46]]) px(ctx, x, y, '#e98a4a', 2, 1)
+  },
+}
+SPECIES.willow = {
+  // Soft dome with long hanging strands that reach almost to the ground.
+  leaf: ['#5f8a3a', '#86b04e', '#b6d77a'],
+  soil: '#6b4a2b',
+  draw(ctx, s) {
+    const th = Math.round(15 * s)
+    trunk(ctx, 16, 47, s < 0.6 ? 3 : 4, th, '#6b5a40', '#4a3d2a')
+    const ty = 47 - th
+    const c = SPECIES.willow.leaf
+    blob(ctx, 16, ty - 4 * s, 9 * s, c)
+    blob(ctx, 16 - 6 * s, ty - 2 * s, 5 * s, c)
+    blob(ctx, 16 + 6 * s, ty - 2 * s, 5 * s, c)
+    const strandBottom = 46
+    for (const dx of [-13, -10, -7, -4, 4, 7, 10, 13]) {
+      const x = Math.round(16 + dx * s)
+      const top = Math.round(ty - 1 * s + Math.abs(dx) * 0.1)
+      const len = Math.round((strandBottom - top) * (0.55 + (Math.abs(dx) % 5) * 0.08))
+      px(ctx, x, top, 1, len, c[1])
+      px(ctx, x, top + len - 2, 1, 2, c[0])
+    }
+  },
+}
+SPECIES.ginkgo = {
+  // Fan / inverted-wedge crown in golden yellow on a slim trunk.
+  leaf: ['#b08a1a', '#e0b92e', '#f6e27a'],
+  soil: '#6b4a2b',
+  draw(ctx, s) {
+    const th = Math.round(15 * s)
+    trunk(ctx, 16, 47, 3, th, '#7a6044', '#523f2c')
+    const top = 47 - th
+    const c = SPECIES.ginkgo.leaf
+    const H = Math.max(3, Math.round(22 * s))
+    for (let i = 0; i < H; i++) {
+      const half = Math.round(2 + (i / H) * 11 * s + (i > H * 0.8 ? -1 : 0))
+      const y = top - H + 2 + i
+      px(ctx, 16 - half, y, half * 2, 1, c[1])
+      px(ctx, 16 + half - 1, y, 1, 1, c[0])
+      px(ctx, 16 - half, y, 2, 1, c[2])
+      if (i % 3 === 0) px(ctx, 16 - half + 1 + ((i * 7) % (half * 2 - 2)), y, 1, 1, c[2])
+    }
+  },
+}
+SPECIES.cedar = {
+  // Broad flat layers with gaps between them, so it reads wider and airier than the pine.
+  leaf: ['#1f4d4a', '#2f6e68', '#4f9a8f'],
+  soil: '#5b4128',
+  draw(ctx, s) {
+    const th = Math.round(10 * s)
+    trunk(ctx, 16, 47, 4, th, '#6b4a2b', '#4a321c')
+    const base = 47 - th
+    const layers: [number, number][] = [[13, 0], [10, 7], [7, 14], [4, 20]]
+    for (const [hw, up] of layers) {
+      const y = Math.round(base - up * s)
+      const w = Math.max(2, Math.round(hw * s))
+      px(ctx, 16 - w, y - 3, w * 2, 4, SPECIES.cedar.leaf[1])
+      px(ctx, 16 - w - 1, y - 1, w * 2 + 2, 2, SPECIES.cedar.leaf[0]) // drooping tips
+      px(ctx, 16 - w + 1, y - 3, w, 1, SPECIES.cedar.leaf[2])
+    }
+  },
+}
+
+// ---------- Wildlife ----------
+
+function fromRows(rows: string[], palette: Record<string, string>): HTMLCanvasElement {
+  const w = Math.max(...rows.map((r) => r.length))
+  const [canvas, ctx] = makeCanvas(w, rows.length)
+  rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && palette[ch] && px(ctx, x, y, palette[ch])))
+  return canvas
+}
+
+const WILDLIFE_SPRITES: Record<string, () => HTMLCanvasElement> = {
+  songbird: () =>
+    fromRows(
+      ['...bbb......', '..bBBBb.....', '..bBEBBK....', '..bBBBBbK...', '.bBBBBBBb...', '.bOOBBBBbb..', '..bOOBBBb.b.', '...bbBBb..b.', '....k..k....'],
+      { b: '#2f5a8a', B: '#4a7fb5', E: '#111111', K: '#e0b030', O: '#e8a05a', k: '#6b4a2b' },
+    ),
+  butterfly: () =>
+    fromRows(
+      ['WW......WW', 'WWWW.DD.WWWW'.slice(0, 10), 'WwwWDDWwwW', '.WwWDDWwW.', '..WWDDWW..', '..W.DD.W..', '....D.....'],
+      { W: '#f2a93b', w: '#fbe08a', D: '#3a2a1a' },
+    ),
+  'blossom-butterfly': () =>
+    fromRows(
+      ['WW......WW', 'WWWW.DD.WWWW'.slice(0, 10), 'WwwWDDWwwW', '.WwWDDWwW.', '..WWDDWW..', '..W.DD.W..', '....D.....'],
+      { W: '#e87aa8', w: '#ffd6e6', D: '#4a2a3a' },
+    ),
+  squirrel: () =>
+    fromRows(
+      ['......tt....', '.....tTTt...', '....tTTTt...', '....tTTt.hh.', '...tTTt.hHHh', '..bBBBBBHHEh', '.bBBBBBBBHHn', '.bBBBBBBBBh.', '..bBwBBBBb..', '..kk..kk....'],
+      { t: '#a85a22', T: '#d9803a', b: '#a85a22', B: '#c46a28', h: '#a85a22', H: '#c46a28', E: '#111111', n: '#222222', w: '#f0d9b0', k: '#5a3318' },
+    ),
+  rabbit: () =>
+    fromRows(
+      ['..ee.ee.....', '..eE.eE.....', '..eE.eE.....', '...bbbb.....', '..bBBBBb....', '..bBEBBbb...', '.bbBBBBBBb..', 'wbBBBBBBBBb.', '.bBBBBBBBBb.', '..kk...kk...'],
+      { e: '#8a7560', E: '#e8b0a8', b: '#8a7560', B: '#b09a82', E2: '#000', w: '#ffffff', k: '#6a5a48' },
+    ),
+  frog: () =>
+    fromRows(
+      ['.ee..ee.', 'eEEeeEEe', '.GGGGGG.', 'gGGGGGGg', 'gGGyyGGg', '.gg..gg.'],
+      { e: '#3f7a2c', E: '#fff6a8', G: '#5aa83c', g: '#3f7a2c', y: '#a8d878' },
+    ),
+}
+
+const wildlifeCache = new Map<string, HTMLCanvasElement>()
+export function wildlifeCanvas(id: string): HTMLCanvasElement {
+  let c = wildlifeCache.get(id)
+  if (!c) {
+    c = (WILDLIFE_SPRITES[id] ?? WILDLIFE_SPRITES.songbird)()
+    wildlifeCache.set(id, c)
+  }
+  return c
+}
+
 const cache = new Map<string, HTMLCanvasElement>()
 
 export function treeCanvas(speciesId: string, stage: GrowthStage): HTMLCanvasElement {

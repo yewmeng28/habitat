@@ -1,4 +1,3 @@
-import { SPECIES, type SpeciesDef } from '../data/species'
 import { GROWTH_STAGES, type FocusSession, type GrowthStage } from './types'
 
 type TimerFields = Pick<FocusSession, 'startedAt' | 'pausedAt' | 'pausedMs' | 'endedAt' | 'plannedSeconds'>
@@ -50,14 +49,6 @@ export function formatClock(ms: number): string {
 export const PRESET_MINUTES = [15, 25, 45, 60] as const
 export const MIN_MINUTES = 1
 export const MAX_MINUTES = 240
-
-export function isSpeciesUnlocked(species: SpeciesDef, completedSessions: number): boolean {
-  return completedSessions >= species.unlockSessions
-}
-
-export function unlockedSpecies(biomeId: string, completedSessions: number): SpeciesDef[] {
-  return SPECIES.filter((s) => s.biomes.includes(biomeId) && isSpeciesUnlocked(s, completedSessions))
-}
 
 /** Nature Energy for a completed session: one per focused minute. */
 export const sessionReward = (plannedSeconds: number) => Math.round(plannedSeconds / 60)

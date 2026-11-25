@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { areaDef, getBiome, parseAreaId } from '../../data/biomes'
 import { getSpecies } from '../../data/species'
+import { WILDLIFE } from '../../data/collection'
+import { AreaOverview } from './AreaOverview'
 import { fromDateKey } from '../../domain/dates'
 import { existingAreaIds, treesInArea } from '../../domain/woodland'
 import type { AreaView, HabitatGameApi } from '../../game/habitatGame'
@@ -26,15 +28,24 @@ export function HabitatPage({ data }: { data: AppData }) {
   const game = useRef<HabitatGameApi | null>(null)
   const areaKeyRef = useRef(areaKey)
 
+  const discovered = useMemo(
+    () => new Set(data.discoveries.filter((d) => d.kind === 'wildlife').map((d) => d.itemId)),
+    [data.discoveries],
+  )
   const areaTrees = useMemo(() => treesInArea(trees, areaKey), [trees, areaKey])
   const view: AreaView = useMemo(
     () => ({
       key: areaKey,
       seed: hashString(areaKey),
       palette: biome.palette,
+      wildlife: WILDLIFE.filter((w) => w.biome === BIOME_ID && discovered.has(w.id)).map((w) => ({
+        id: w.id,
+        behaviour: w.behaviour,
+        count: Math.min(3, 1 + Math.floor(areaTrees.length / 8)),
+      })),
       trees: areaTrees.map((t) => ({ id: t.id, speciesId: t.speciesId, stage: t.growthStage, x: t.position.x, y: t.position.y })),
     }),
-    [areaKey, areaTrees, biome.palette],
+    [areaKey, areaTrees, biome.palette, discovered],
   )
 
   // Create the game once (Phaser is loaded lazily so it never slows down the other tabs).
@@ -76,16 +87,6 @@ export function HabitatPage({ data }: { data: AppData }) {
         </div>
       </div>
 
-      {areaIds.length > 1 && (
-        <div className="chips area-tabs" role="tablist" aria-label="Areas">
-          {areaIds.map((id) => (
-            <button key={id} role="tab" aria-selected={id === areaKey} className={`chip ${id === areaKey ? 'on' : ''}`} onClick={() => setPicked(id)}>
-              {areaDef(biome, parseAreaId(id).index).name}
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className="game-frame">
         <div ref={host} className="game-host" aria-label="Your woodland. Drag to pan, scroll or pinch to zoom, tap a tree for details." />
         {loadError && <p className="error pad">The woodland could not be loaded.</p>}
@@ -97,6 +98,9 @@ export function HabitatPage({ data }: { data: AppData }) {
           </div>
         )}
       </div>
+
+      <h2>Forest overview</h2>
+      <AreaOverview biome={biome} areaIds={areaIds} trees={trees} activeId={areaKey} onPick={setPicked} />
 
       {selected && species && (
         <div className="card" role="status">

@@ -47,6 +47,11 @@ export async function clearWoodland(): Promise<void> {
   })
 }
 
+/** Forget discoveries so the discovery toast and points can be re-tested. They re-unlock automatically. */
+export async function clearDiscoveries(): Promise<void> {
+  await db.discoveries.clear()
+}
+
 export async function wipeEverything(): Promise<void> {
   await Promise.all(db.tables.map((t) => t.clear()))
 }
