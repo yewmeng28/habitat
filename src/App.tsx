@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router'
 import { useAppData } from './hooks'
 import { ChallengesPage } from './features/challenges/ChallengesPage'
@@ -7,6 +8,9 @@ import { SettingsPage } from './features/settings/SettingsPage'
 import { ComingSoon } from './components/ComingSoon'
 import { FocusPage } from './features/focus/FocusPage'
 import { HabitatPage } from './features/habitat/HabitatPage'
+
+// Dev-only: import.meta.env.DEV is statically false in production builds, so this module is dropped from the bundle.
+const DevToolsPage = import.meta.env.DEV ? lazy(() => import('./dev/DevToolsPage')) : null
 
 const NAV = [
   { to: '/habitat', label: 'Habitat', icon: 'M12 3 4 20h16L12 3Zm0 6 4 8H8l4-8Z' },
@@ -73,6 +77,9 @@ export default function App() {
               path="/collection"
               element={<ComingSoon title="Collection" phase="Phase 3" text="Species, wildlife and discoveries will be collected here." />}
             />
+            {DevToolsPage && (
+              <Route path="/test" element={<Suspense fallback={null}><DevToolsPage data={data} /></Suspense>} />
+            )}
             <Route path="*" element={<Navigate to="/growth" replace />} />
           </Routes>
         )}

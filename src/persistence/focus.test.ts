@@ -78,3 +78,18 @@ describe('focus sessions', () => {
     expect(await listTrees()).toHaveLength(1)
   })
 })
+
+describe('zero-length sessions (dev tools)', () => {
+  it('complete immediately and survive a backup round-trip', async () => {
+    const now = new Date().toISOString()
+    const id = crypto.randomUUID()
+    await db.focusSessions.add({
+      id, userId: null, createdAt: now, updatedAt: now, deletedAt: null, speciesId: 'oak', biomeId: 'woodland',
+      plannedSeconds: 0, startedAt: now, pausedAt: null, pausedMs: 0, endedAt: null, status: 'active',
+    })
+    expect(await completeSession(id)).not.toBeNull()
+    expect(await natureEnergyBalance()).toBe(0)
+    const parsed = parseBackup(JSON.stringify(await exportBackup()))
+    expect(parsed.ok).toBe(true)
+  })
+})

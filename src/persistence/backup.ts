@@ -62,7 +62,7 @@ const focusSession = z.object({
   ...base,
   speciesId: z.string().min(1),
   biomeId: z.string().min(1),
-  plannedSeconds: z.number().int().min(1),
+  plannedSeconds: z.number().int().min(0), // 0 only occurs for dev-tool sessions
   startedAt: z.string(),
   pausedAt: z.string().nullable(),
   pausedMs: z.number().min(0),

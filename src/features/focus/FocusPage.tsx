@@ -35,8 +35,11 @@ export function FocusPage({ data }: { data: AppData }) {
   const completed = data.focusSessions.filter((s) => s.status === 'completed')
   const open = data.focusSessions.find((s) => s.status === 'active' || s.status === 'paused')
   const [speciesId, setSpeciesId] = useState('oak')
-  const [minutes, setMinutes] = useState<number>(25)
+  const [preset, setPreset] = useState<number>(25)
   const [custom, setCustom] = useState('')
+  // What's shown is what's used: a non-empty custom field wins, otherwise the selected preset.
+  const minutes = custom.trim() !== '' ? Number(custom) : preset
+  const minutesValid = Number.isInteger(minutes) && minutes >= MIN_MINUTES && minutes <= MAX_MINUTES
   const [error, setError] = useState('')
   const [justPlanted, setJustPlanted] = useState<FocusSession | null>(null)
   const now = useNow(!!open)
@@ -143,7 +146,7 @@ export function FocusPage({ data }: { data: AppData }) {
         <h2>Duration</h2>
         <div className="chips" role="group" aria-label="Duration">
           {PRESET_MINUTES.map((m) => (
-            <button key={m} className={`chip ${minutes === m && !custom ? 'on' : ''}`} aria-pressed={minutes === m && !custom} onClick={() => { setMinutes(m); setCustom('') }}>{m} min</button>
+            <button key={m} className={`chip ${minutes === m && custom.trim() === '' ? 'on' : ''}`} aria-pressed={minutes === m && custom.trim() === ''} onClick={() => { setPreset(m); setCustom('') }}>{m} min</button>
           ))}
           <input
             className="mins"
@@ -154,12 +157,13 @@ export function FocusPage({ data }: { data: AppData }) {
             placeholder="Custom"
             aria-label="Custom minutes"
             value={custom}
-            onChange={(e) => { setCustom(e.target.value); if (e.target.value) setMinutes(Number(e.target.value)) }}
+            onChange={(e) => setCustom(e.target.value)}
           />
         </div>
+        {!minutesValid && <p className="error" role="alert">Enter a whole number of minutes from {MIN_MINUTES} to {MAX_MINUTES}.</p>}
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="btn primary big" onClick={() => run(() => startSession(speciesId, minutes))}>
-          Plant {getSpecies(speciesId)?.name} · {minutes} min
+        <button className="btn primary big" disabled={!minutesValid} onClick={() => run(() => startSession(speciesId, minutes))}>
+          Plant {getSpecies(speciesId)?.name}{minutesValid ? ` · ${minutes} min` : ''}
         </button>
         <p className="muted small">Keep this app open or come back later: the timer follows the clock, not the screen. Giving up plants nothing but never harms the trees you already have.</p>
       </div>
