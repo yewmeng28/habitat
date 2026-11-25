@@ -53,6 +53,9 @@ interface Critter {
 }
 
 const MARGIN = 24
+/** On phones the world opens zoomed in (trees are small otherwise). Pinch out returns to the full view. */
+const PHONE_MAX_WIDTH = 600
+const PHONE_START_ZOOM = 1.3
 const MAX_ZOOM = 8
 
 class WoodlandScene extends Phaser.Scene {
@@ -146,6 +149,7 @@ class WoodlandScene extends Phaser.Scene {
         this.treeSprites.delete(id)
       }
 
+    if (changedArea && this.scale.width < PHONE_MAX_WIDTH && this.treeSprites.size > 0) this.centerOnTrees()
     this.treePoints = [...this.treeSprites.values()].map((s) => ({ x: s.x, y: s.y - SPRITE_H * 0.55 }))
     // rebuild critters only when the set of wildlife (or the area) changes, so they don't jump on every new tree
     const wKey = `${viewKey}|${area.wildlife.map((w) => `${w.id}x${w.count}`).join(',')}`
@@ -281,9 +285,19 @@ class WoodlandScene extends Phaser.Scene {
     const h = this.scale.height
     if (w === 0 || h === 0) return
     this.fitZoom = Math.min(w / (this.world.w + 2 * 8), h / (this.world.h + 2 * 8))
-    if (reset || cam.zoom < this.fitZoom) cam.setZoom(this.fitZoom)
+    const start = this.fitZoom * (w < PHONE_MAX_WIDTH ? PHONE_START_ZOOM : 1)
+    if (reset) cam.setZoom(start)
+    else if (cam.zoom < this.fitZoom) cam.setZoom(this.fitZoom)
     this.clamp()
     if (reset) cam.centerOn(this.world.w / 2, this.world.h / 2)
+  }
+
+  /** Opening view when zoomed in: centre on where the trees are rather than the empty middle. */
+  private centerOnTrees() {
+    const pts = [...this.treeSprites.values()]
+    const cx = pts.reduce((a, t) => a + t.x, 0) / pts.length
+    const cy = pts.reduce((a, t) => a + t.y - SPRITE_H / 2, 0) / pts.length
+    this.cameras.main.centerOn(cx, cy)
   }
 
   private clamp() {
