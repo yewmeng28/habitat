@@ -33,8 +33,12 @@ export function assignArea(biome: BiomeDef, treesInBiome: PlantedTree[]): { area
   }
 }
 
-/** World shape (in tiles) used to lay out slots; matches the scene. */
-const ASPECT = 20 / 14
+/**
+ * Slots are laid out on a square grid in normalised space. Positions are stored per tree and must be the same
+ * on every device, so they can't depend on the viewport. The scene stretches them to a portrait or landscape
+ * world of equal area, and a square grid spreads well in both.
+ */
+const ASPECT = 1
 
 /**
  * Deterministic, well-spread position for the nth tree in an area:

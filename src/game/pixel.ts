@@ -320,13 +320,25 @@ function mulberry(seed: number) {
 }
 
 export const TILE = 16
-export const WORLD_TILES_W = 20
-export const WORLD_TILES_H = 14
-export const WORLD_W = TILE * WORLD_TILES_W
-export const WORLD_H = TILE * WORLD_TILES_H
+
+/** Same tile count either way, so capacity and density feel equal in both shapes. */
+export type WorldShape = 'landscape' | 'portrait'
+
+export interface WorldSize {
+  w: number
+  h: number
+  tilesW: number
+  tilesH: number
+}
+
+export function worldSize(shape: WorldShape): WorldSize {
+  const [tilesW, tilesH] = shape === 'portrait' ? [14, 20] : [20, 14]
+  return { w: tilesW * TILE, h: tilesH * TILE, tilesW, tilesH }
+}
 
 /** Terrain for one area: tiled grass with variation, a winding dirt path, flowers, ferns, a pond. Seeded per area. */
-export function groundCanvas(seed: number, palette: { grass: string[]; path: string }): HTMLCanvasElement {
+export function groundCanvas(seed: number, palette: { grass: string[]; path: string }, shape: WorldShape = 'landscape'): HTMLCanvasElement {
+  const { w: WORLD_W, h: WORLD_H, tilesW: WORLD_TILES_W, tilesH: WORLD_TILES_H } = worldSize(shape)
   const [canvas, ctx] = makeCanvas(WORLD_W, WORLD_H)
   const rand = mulberry(seed)
   for (let ty = 0; ty < WORLD_TILES_H; ty++) {

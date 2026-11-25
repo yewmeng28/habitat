@@ -195,7 +195,15 @@ input, select {
 .planted { display: flex; gap: 16px; align-items: center; border-color: var(--green); }
 .history-row { grid-template-columns: minmax(0, 1fr) auto auto !important; }
 .game-frame { position: relative; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: #2a3a24; }
-.game-host { width: 100%; height: min(62dvh, 640px); min-height: 320px; touch-action: none; }
+.game-host { width: 100%; touch-action: none; }
+/* Frame is sized to the world's shape, so there is no dead space; capped so it never outgrows the screen. */
+.game-frame.landscape .game-host { aspect-ratio: 20 / 14; max-height: 74dvh; }
+.game-frame.portrait .game-host { aspect-ratio: 14 / 20; max-height: 74dvh; }
+.tree-info { position: absolute; left: 8px; right: 8px; top: 8px; padding: 8px 10px; background: color-mix(in srgb, var(--surface) 92%, transparent); pointer-events: none; }
+@media (max-width: 767px) {
+  /* edge-to-edge on phones: every pixel of width goes to the world */
+  .game-frame { margin: 0 -16px; border-radius: 0; border-left: 0; border-right: 0; }
+}
 .game-host canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .game-empty { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(92%, 340px); text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .area-tabs { flex-wrap: nowrap; overflow-x: auto; }

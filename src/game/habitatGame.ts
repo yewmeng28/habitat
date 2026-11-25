@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GrowthStage } from '../domain/types'
-import { SPRITE_H, SPRITE_W, WORLD_H, WORLD_W, groundCanvas, treeCanvas, wildlifeCanvas } from './pixel'
+import { SPRITE_H, SPRITE_W, groundCanvas, treeCanvas, wildlifeCanvas, worldSize, type WorldShape, type WorldSize } from './pixel'
 
 /** The only data the game sees: plain view models. No React, no database, no sync. */
 export interface TreeView {
@@ -21,6 +21,7 @@ export interface WildlifeView {
 
 export interface AreaView {
   key: string // unique per area, also used to seed its terrain
+  shape: WorldShape // chosen from the viewport; tree positions are fractions so they work in either
   seed: number
   palette: { grass: string[]; path: string }
   trees: TreeView[]
@@ -62,6 +63,7 @@ class WoodlandScene extends Phaser.Scene {
   private ring?: Phaser.GameObjects.Graphics
   private selectedId: string | null = null
   private currentKey = ''
+  private world: WorldSize = worldSize('landscape')
   private ambient: Phaser.GameObjects.GameObject[] = []
   private critters: Critter[] = []
   private wildlifeKey = ''
@@ -104,12 +106,14 @@ class WoodlandScene extends Phaser.Scene {
   }
 
   private applyArea(area: AreaView) {
-    const changedArea = area.key !== this.currentKey
-    this.currentKey = area.key
+    const viewKey = `${area.key}|${area.shape}`
+    const changedArea = viewKey !== this.currentKey
+    this.currentKey = viewKey
+    if (changedArea) this.world = worldSize(area.shape)
 
     if (changedArea) {
       this.ground?.destroy()
-      const key = this.texture(`ground:${area.key}`, () => groundCanvas(area.seed, area.palette))
+      const key = this.texture(`ground:${viewKey}`, () => groundCanvas(area.seed, area.palette, area.shape))
       this.ground = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-1)
       this.treeSprites.forEach((s) => s.destroy())
       this.treeSprites.clear()
@@ -122,8 +126,8 @@ class WoodlandScene extends Phaser.Scene {
     for (const t of area.trees) {
       seen.add(t.id)
       const key = this.texture(`tree:${t.speciesId}:${t.stage}`, () => treeCanvas(t.speciesId, t.stage))
-      const x = Math.round(MARGIN + t.x * (WORLD_W - 2 * MARGIN))
-      const y = Math.round(MARGIN + 12 + t.y * (WORLD_H - 2 * MARGIN - 12))
+      const x = Math.round(MARGIN + t.x * (this.world.w - 2 * MARGIN))
+      const y = Math.round(MARGIN + 12 + t.y * (this.world.h - 2 * MARGIN - 12))
       let s = this.treeSprites.get(t.id)
       if (!s) {
         s = this.add.image(x, y, key).setOrigin(0.5, 1)
@@ -144,7 +148,7 @@ class WoodlandScene extends Phaser.Scene {
 
     this.treePoints = [...this.treeSprites.values()].map((s) => ({ x: s.x, y: s.y - SPRITE_H * 0.55 }))
     // rebuild critters only when the set of wildlife (or the area) changes, so they don't jump on every new tree
-    const wKey = `${area.key}|${area.wildlife.map((w) => `${w.id}x${w.count}`).join(',')}`
+    const wKey = `${viewKey}|${area.wildlife.map((w) => `${w.id}x${w.count}`).join(',')}`
     if (wKey !== this.wildlifeKey) {
       this.wildlifeKey = wKey
       this.spawnWildlife(area.wildlife)
@@ -157,8 +161,8 @@ class WoodlandScene extends Phaser.Scene {
     for (const w of list) {
       const key = this.texture(`wild:${w.id}`, () => wildlifeCanvas(w.id))
       for (let i = 0; i < w.count; i++) {
-        const x = MARGIN + Math.random() * (WORLD_W - 2 * MARGIN)
-        const y = MARGIN + Math.random() * (WORLD_H - 2 * MARGIN)
+        const x = MARGIN + Math.random() * (this.world.w - 2 * MARGIN)
+        const y = MARGIN + Math.random() * (this.world.h - 2 * MARGIN)
         const s = this.add.image(Math.round(x), Math.round(y), key).setOrigin(0.5, 1).setDepth(y)
         this.critters.push({ s, behaviour: w.behaviour, wait: Math.random() * 2000, t: 0, dur: 0, x0: x, y0: y, x1: x, y1: y, arc: 0, flap: 0, phase: Math.random() * 6 })
       }
@@ -180,13 +184,13 @@ class WoodlandScene extends Phaser.Scene {
       c.arc = 10
     } else if (c.behaviour === 'hop') {
       const ang = Math.random() * Math.PI * 2
-      c.x1 = Phaser.Math.Clamp(c.x0 + Math.cos(ang) * (10 + Math.random() * 16), MARGIN, WORLD_W - MARGIN)
-      c.y1 = Phaser.Math.Clamp(c.y0 + Math.sin(ang) * (6 + Math.random() * 10), MARGIN + 12, WORLD_H - MARGIN)
+      c.x1 = Phaser.Math.Clamp(c.x0 + Math.cos(ang) * (10 + Math.random() * 16), MARGIN, this.world.w - MARGIN)
+      c.y1 = Phaser.Math.Clamp(c.y0 + Math.sin(ang) * (6 + Math.random() * 10), MARGIN + 12, this.world.h - MARGIN)
       c.dur = 320
       c.arc = 4
     } else {
-      c.x1 = MARGIN + Math.random() * (WORLD_W - 2 * MARGIN)
-      c.y1 = MARGIN + Math.random() * (WORLD_H - 2 * MARGIN)
+      c.x1 = MARGIN + Math.random() * (this.world.w - 2 * MARGIN)
+      c.y1 = MARGIN + Math.random() * (this.world.h - 2 * MARGIN)
       c.dur = 2200 + Math.random() * 2600
       c.arc = 0
     }
@@ -242,14 +246,14 @@ class WoodlandScene extends Phaser.Scene {
     })
     // shadows only show over the terrain, never in the margin around it
     const clip = this.make.graphics({}, false)
-    clip.fillRect(0, 0, WORLD_W, WORLD_H)
+    clip.fillRect(0, 0, this.world.w, this.world.h)
     const mask = clip.createGeometryMask()
     this.ambient.push(clip)
     for (let i = 0; i < 3; i++) {
-      const img = this.add.image(-80 + rnd(i) * WORLD_W, 30 + rnd(i + 5) * (WORLD_H - 60), shadowKey)
+      const img = this.add.image(-80 + rnd(i) * this.world.w, 30 + rnd(i + 5) * (this.world.h - 60), shadowKey)
         .setAlpha(0.22).setDepth(90000).setScale(1.5 + rnd(i + 9))
       img.setMask(mask)
-      this.tweens.add({ targets: img, x: WORLD_W + 90, duration: 70000 + i * 15000, repeat: -1, delay: -rnd(i) * 40000 })
+      this.tweens.add({ targets: img, x: this.world.w + 90, duration: 70000 + i * 15000, repeat: -1, delay: -rnd(i) * 40000 })
       this.ambient.push(img)
     }
     // floating motes (pollen / fireflies)
@@ -263,7 +267,7 @@ class WoodlandScene extends Phaser.Scene {
       return c
     })
     for (let i = 0; i < 14; i++) {
-      const m = this.add.image(rnd(i + 20) * WORLD_W, rnd(i + 40) * WORLD_H, moteKey).setDepth(89000).setAlpha(0.2)
+      const m = this.add.image(rnd(i + 20) * this.world.w, rnd(i + 40) * this.world.h, moteKey).setDepth(89000).setAlpha(0.2)
       this.tweens.add({ targets: m, y: m.y - 14 - rnd(i) * 12, x: m.x + (rnd(i + 3) - 0.5) * 24, alpha: 0.9, duration: 2600 + rnd(i + 7) * 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd(i + 11) * 3000 })
       this.ambient.push(m)
     }
@@ -276,10 +280,10 @@ class WoodlandScene extends Phaser.Scene {
     const w = this.scale.width
     const h = this.scale.height
     if (w === 0 || h === 0) return
-    this.fitZoom = Math.min(w / (WORLD_W + 2 * 8), h / (WORLD_H + 2 * 8))
+    this.fitZoom = Math.min(w / (this.world.w + 2 * 8), h / (this.world.h + 2 * 8))
     if (reset || cam.zoom < this.fitZoom) cam.setZoom(this.fitZoom)
     this.clamp()
-    if (reset) cam.centerOn(WORLD_W / 2, WORLD_H / 2)
+    if (reset) cam.centerOn(this.world.w / 2, this.world.h / 2)
   }
 
   private clamp() {
@@ -287,9 +291,9 @@ class WoodlandScene extends Phaser.Scene {
     // allow the world to be centred when smaller than the viewport, and panned when larger
     const vw = cam.width / cam.zoom
     const vh = cam.height / cam.zoom
-    const padX = Math.max(8, (vw - WORLD_W) / 2 + 8)
-    const padY = Math.max(8, (vh - WORLD_H) / 2 + 8)
-    cam.setBounds(-padX, -padY, WORLD_W + padX * 2, WORLD_H + padY * 2)
+    const padX = Math.max(8, (vw - this.world.w) / 2 + 8)
+    const padY = Math.max(8, (vh - this.world.h) / 2 + 8)
+    cam.setBounds(-padX, -padY, this.world.w + padX * 2, this.world.h + padY * 2)
   }
 
   private zoomBy(f: number) {

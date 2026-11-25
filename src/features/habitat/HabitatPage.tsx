@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router'
 import { areaDef, getBiome, parseAreaId } from '../../data/biomes'
 import { getSpecies } from '../../data/species'
@@ -7,13 +7,29 @@ import { AreaOverview } from './AreaOverview'
 import { fromDateKey } from '../../domain/dates'
 import { existingAreaIds, treesInArea } from '../../domain/woodland'
 import type { AreaView, HabitatGameApi } from '../../game/habitatGame'
-import { hashString } from '../../game/pixel'
+import { hashString, type WorldShape } from '../../game/pixel'
 import type { AppData } from '../../hooks'
 
 const BIOME_ID = 'woodland'
 
+// Portrait world on tall viewports (phones, portrait tablets), landscape otherwise.
+const PORTRAIT_QUERY = '(max-aspect-ratio: 9/10)'
+function useWorldShape(): WorldShape {
+  const portrait = useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(PORTRAIT_QUERY)
+      mq.addEventListener('change', cb)
+      return () => mq.removeEventListener('change', cb)
+    },
+    () => window.matchMedia(PORTRAIT_QUERY).matches,
+    () => false,
+  )
+  return portrait ? 'portrait' : 'landscape'
+}
+
 export function HabitatPage({ data }: { data: AppData }) {
   const biome = getBiome(BIOME_ID)!
+  const shape = useWorldShape()
   const trees = useMemo(() => data.plantedTrees.filter((t) => t.biomeId === BIOME_ID), [data.plantedTrees])
   const areaIds = useMemo(() => existingAreaIds(biome, trees), [biome, trees])
   const latest = areaIds[areaIds.length - 1]
@@ -36,6 +52,7 @@ export function HabitatPage({ data }: { data: AppData }) {
   const view: AreaView = useMemo(
     () => ({
       key: areaKey,
+      shape,
       seed: hashString(areaKey),
       palette: biome.palette,
       wildlife: WILDLIFE.filter((w) => w.biome === BIOME_ID && discovered.has(w.id)).map((w) => ({
@@ -45,7 +62,7 @@ export function HabitatPage({ data }: { data: AppData }) {
       })),
       trees: areaTrees.map((t) => ({ id: t.id, speciesId: t.speciesId, stage: t.growthStage, x: t.position.x, y: t.position.y })),
     }),
-    [areaKey, areaTrees, biome.palette, discovered],
+    [areaKey, shape, areaTrees, biome.palette, discovered],
   )
 
   // Create the game once (Phaser is loaded lazily so it never slows down the other tabs).
@@ -87,7 +104,7 @@ export function HabitatPage({ data }: { data: AppData }) {
         </div>
       </div>
 
-      <div className="game-frame">
+      <div className={`game-frame ${shape}`}>
         <div ref={host} className="game-host" aria-label="Your woodland. Drag to pan, scroll or pinch to zoom, tap a tree for details." />
         {loadError && <p className="error pad">The woodland could not be loaded.</p>}
         {trees.length === 0 && (
@@ -97,18 +114,18 @@ export function HabitatPage({ data }: { data: AppData }) {
             <Link className="btn primary" to="/focus">Start focusing</Link>
           </div>
         )}
+        {selected && species && (
+          <div className="tree-info card" role="status">
+            <strong>{species.name}</strong>
+            <span className="small muted"> · planted {fromDateKey(selected.plantedOn).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} · {selected.growthStage}</span>
+            <p className="small muted">{species.description}</p>
+          </div>
+        )}
       </div>
 
       <h2>Forest overview</h2>
       <AreaOverview biome={biome} areaIds={areaIds} trees={trees} activeId={areaKey} onPick={setPicked} />
 
-      {selected && species && (
-        <div className="card" role="status">
-          <h2>{species.name}</h2>
-          <p className="muted small">{species.description}</p>
-          <p className="small">Planted {fromDateKey(selected.plantedOn).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })} · {selected.growthStage}</p>
-        </div>
-      )}
     </section>
   )
 }
