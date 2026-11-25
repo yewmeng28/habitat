@@ -59,6 +59,41 @@ export interface LedgerEntry extends BaseRecord {
   reason: string
 }
 
+// ---- Focus & woodland ----
+
+export const GROWTH_STAGES = ['seed', 'sprout', 'sapling', 'young', 'mature'] as const
+export type GrowthStage = (typeof GROWTH_STAGES)[number]
+
+export type FocusStatus = 'active' | 'paused' | 'completed' | 'interrupted'
+
+/** Timer state is timestamp-based so it survives backgrounding, refreshes and iOS suspension. */
+export interface FocusSession extends BaseRecord {
+  speciesId: string
+  biomeId: string
+  plannedSeconds: number
+  startedAt: string // ISO
+  pausedAt: string | null // ISO while paused
+  pausedMs: number // total time spent paused in earlier pauses
+  endedAt: string | null // ISO; for completed sessions, the moment the full duration was reached
+  status: FocusStatus
+}
+
+export interface TreePosition {
+  x: number // 0..1 within the area
+  y: number
+}
+
+/** A permanent record. At most one exists per focus session (unique index on focusSessionId). */
+export interface PlantedTree extends BaseRecord {
+  speciesId: string
+  biomeId: string
+  areaId: string
+  plantedOn: DateKey
+  growthStage: GrowthStage
+  position: TreePosition
+  focusSessionId: string
+}
+
 export interface Preferences extends BaseRecord {
   // fixed id 'preferences'
   weekStartsOn: 0 | 1

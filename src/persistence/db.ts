@@ -2,9 +2,11 @@ import Dexie, { type EntityTable } from 'dexie'
 import type {
   Challenge,
   ChallengeRecord,
+  FocusSession,
   Habit,
   HabitCompletion,
   LedgerEntry,
+  PlantedTree,
   Preferences,
 } from '../domain/types'
 
@@ -19,6 +21,8 @@ export class HabitatDB extends Dexie {
   challengeRecords!: EntityTable<ChallengeRecord, 'id'>
   ledger!: EntityTable<LedgerEntry, 'id'>
   preferences!: EntityTable<Preferences, 'id'>
+  focusSessions!: EntityTable<FocusSession, 'id'>
+  plantedTrees!: EntityTable<PlantedTree, 'id'>
 
   constructor(name = 'habitat') {
     super(name)
@@ -29,6 +33,11 @@ export class HabitatDB extends Dexie {
       challengeRecords: 'id, &[challengeId+date], date, updatedAt',
       ledger: 'id, &sourceKey, date, updatedAt',
       preferences: 'id',
+    })
+    // v2 (Phase 2): focus sessions and permanent trees. One tree per session is enforced by the unique index.
+    this.version(2).stores({
+      focusSessions: 'id, status, updatedAt',
+      plantedTrees: 'id, &focusSessionId, areaId, updatedAt',
     })
   }
 }

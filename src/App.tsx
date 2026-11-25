@@ -5,6 +5,8 @@ import { GrowthPage } from './features/growth/GrowthPage'
 import { InsightsPage } from './features/insights/InsightsPage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { ComingSoon } from './components/ComingSoon'
+import { FocusPage } from './features/focus/FocusPage'
+import { HabitatPage } from './features/habitat/HabitatPage'
 
 const NAV = [
   { to: '/habitat', label: 'Habitat', icon: 'M12 3 4 20h16L12 3Zm0 6 4 8H8l4-8Z' },
@@ -46,6 +48,11 @@ export default function App() {
 
       <main className="main">
         <header className="topbar">
+          <NavLink to="/settings" className="topbar-settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M3 12h3m12 0h3" />
+            </svg>
+          </NavLink>
           <div className="energy" title="Nature Energy">
             <span className="energy-dot" aria-hidden="true" />
             <strong>{energy}</strong> NE
@@ -60,14 +67,8 @@ export default function App() {
             <Route path="/challenges" element={<ChallengesPage data={data} />} />
             <Route path="/insights" element={<InsightsPage data={data} />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route
-              path="/habitat"
-              element={<ComingSoon title="Habitat" phase="Phase 2" text="Your living ecosystem will appear here once focus sessions can plant trees." />}
-            />
-            <Route
-              path="/focus"
-              element={<ComingSoon title="Focus" phase="Phase 2" text="The focus timer and tree planting arrive in the next phase." />}
-            />
+            <Route path="/habitat" element={<HabitatPage data={data} />} />
+            <Route path="/focus" element={<FocusPage data={data} />} />
             <Route
               path="/collection"
               element={<ComingSoon title="Collection" phase="Phase 3" text="Species, wildlife and discoveries will be collected here." />}

@@ -17,4 +17,4 @@ For GitHub Pages, build with `VITE_BASE_PATH=/<repo-name>/ npm run build`.
 
 ## Status
 
-Phase 1 (habit tracker foundation) is implemented. Focus timer, woodland, collection and cloud sync are planned.
+Phases 1 (habit tracker) and 2 (focus timer, tree planting, Woodland Sanctuary) are implemented. Collection, wildlife and cloud sync are planned.
