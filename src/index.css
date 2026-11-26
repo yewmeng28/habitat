@@ -364,3 +364,11 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .chip.wide { padding: 0 14px; }
 .grid-heading { grid-column: 1 / -1; font-weight: 700; margin-top: 8px; color: var(--muted); letter-spacing: .02em; }
 .world-swatch.big { width: 64px; height: 56px; }
+
+/* Focus: the controls are pinned to the bottom and can never be pushed off-screen by tall content. The glass
+   buttons are opaque (no backdrop blur), because iOS can stop painting blurred elements over a repainting background. */
+.focus-center { min-height: 0; overflow: hidden; padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+.focus-controls { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 20px); padding: 0 20px; width: auto; z-index: 3; }
+.focus-tree { display: flex; justify-content: center; }
+.focus-tree .tree-preview { height: min(var(--tree-h), 32dvh) !important; width: auto !important; aspect-ratio: 32 / 48; }
+.btn.glass { background: rgba(18, 28, 14, .82); -webkit-backdrop-filter: none; backdrop-filter: none; }

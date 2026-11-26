@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { FloatingMenu } from './components/FloatingMenu'
 import { RotatePrompt } from './components/RotatePrompt'
 import { FocusBar } from './components/FocusBar'
@@ -173,6 +174,7 @@ export default function App() {
         {!data ? (
           <p className="muted pad">Loading…</p>
         ) : (
+          <ErrorBoundary key={pathname}>
           <Routes>
             <Route path="/" element={<Navigate to="/growth" replace />} />
             <Route path="/growth" element={<GrowthPage data={data} />} />
@@ -201,6 +203,7 @@ export default function App() {
             )}
             <Route path="*" element={<Navigate to="/growth" replace />} />
           </Routes>
+          </ErrorBoundary>
         )}
       </main>
     </div>

@@ -87,7 +87,10 @@ function RunningSession({ session, error, onPause, onResume, onGiveUp, onMinimis
     <section className="focus-immersive" style={{ backgroundImage: `url(${backdrop(session.biomeId)})` }} aria-label="Focus session">
       <div className="focus-shade" />
       <div className="focus-center">
-        <TreePreview speciesId={session.speciesId} stage={stage} scale={scale} label={`${sp?.name} ${stage}`} />
+        {/* The tree is capped to a share of the screen height, so it can never push the controls off the bottom. */}
+        <div className="focus-tree" style={{ '--tree-h': `${48 * scale}px` } as React.CSSProperties}>
+          <TreePreview speciesId={session.speciesId} stage={stage} scale={scale} label={`${sp?.name} ${stage}`} />
+        </div>
         <p className="clock xl" role="timer" aria-live="off">{formatClock(remainingMs(session, now))}</p>
         <p className="focus-sub">{sp?.name} · {stage} · {Math.round(p * 100)}%{paused ? ' · paused' : ''}</p>
         <div className="meter light" aria-hidden="true"><span style={{ width: `${p * 100}%` }} /></div>
