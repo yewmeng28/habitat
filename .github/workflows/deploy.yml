@@ -1,0 +1,49 @@
+name: Build and deploy
+
+# Every push and pull request is checked. A push to main also publishes the built site to the
+# `gh-pages` branch, which GitHub Pages serves (Settings -> Pages -> Deploy from a branch -> gh-pages).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # lets you re-run a deploy manually from the Actions tab
+
+permissions:
+  contents: write # needed to push the gh-pages branch with the built-in GITHUB_TOKEN
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+      # Pages serves the site from /<repository-name>/, so the app is built with that base path.
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+
+      - name: Publish to gh-pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          cd dist
+          touch .nojekyll
+          git init -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
