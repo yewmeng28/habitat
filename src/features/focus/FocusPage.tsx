@@ -1,38 +1,113 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { TreePreview } from '../../components/TreePreview'
+import { BIOMES } from '../../data/biomes'
 import { SPECIES, getSpecies } from '../../data/species'
 import {
-  MAX_MINUTES, MIN_MINUTES, PRESET_MINUTES, formatClock, isFinished,
+  MAX_MINUTES, MIN_MINUTES, PRESET_MINUTES, formatClock,
   progress, remainingMs, stageForProgress,
 } from '../../domain/focus'
 import { fromDateKey, toDateKey, todayKey } from '../../domain/dates'
-import type { FocusSession } from '../../domain/types'
+import type { FocusSession, PlantedTree } from '../../domain/types'
 import { computeStats, requirementText, ruleProgress } from '../../domain/progress'
-import type { AppData } from '../../hooks'
+import { groundCanvas } from '../../game/pixel'
+import { useNow, type AppData } from '../../hooks'
 import {
-  completeSession, interruptSession, pauseSession, resumeSession, settleOpenSession, startSession,
+  interruptSession, pauseSession, resumeSession, startSession,
 } from '../../persistence/focusRepo'
 
-function useNow(running: boolean): number {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    if (!running) return
-    // The interval only triggers re-renders. Displayed time is always computed from timestamps.
-    const tick = () => setNow(Date.now())
-    const id = window.setInterval(tick, 500)
-    document.addEventListener('visibilitychange', tick)
-    window.addEventListener('focus', tick)
-    return () => {
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', tick)
-      window.removeEventListener('focus', tick)
-    }
-  }, [running])
-  return now
+// One terrain patch, rendered once and reused as the full-screen backdrop.
+let groundUrl: string | null = null
+function backdrop(): string {
+  if (!groundUrl) groundUrl = groundCanvas('focus-backdrop', 'clearing', BIOMES[0].palette, 'landscape').toDataURL()
+  return groundUrl
 }
 
-export function FocusPage({ data }: { data: AppData }) {
+/** Keeps the screen awake while a session is running, where the browser supports it. Failure is harmless. */
+function useWakeLock(active: boolean) {
+  useEffect(() => {
+    if (!active || !('wakeLock' in navigator)) return
+    let lock: WakeLockSentinel | null = null
+    let cancelled = false
+    const acquire = async () => {
+      try {
+        lock = await navigator.wakeLock.request('screen')
+        if (cancelled) lock.release().catch(() => {})
+      } catch {
+        /* denied or unsupported: the timer still works, the screen may just dim */
+      }
+    }
+    const onVisible = () => document.visibilityState === 'visible' && acquire()
+    acquire()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
+      lock?.release().catch(() => {})
+    }
+  }, [active])
+}
+
+const treeScaleFor = () => Math.max(4, Math.min(12, Math.floor(Math.min((window.innerHeight * 0.4) / 48, (window.innerWidth * 0.8) / 32))))
+function useTreeScale(): number {
+  const [scale, setScale] = useState(treeScaleFor)
+  useEffect(() => {
+    const onResize = () => setScale(treeScaleFor())
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return scale
+}
+
+interface RunningProps {
+  session: FocusSession
+  error: string
+  onPause: () => void
+  onResume: () => void
+  onGiveUp: () => void
+  onMinimise: () => void
+}
+
+/** Whole-screen focus view: just the growing tree, the time and the controls. */
+function RunningSession({ session, error, onPause, onResume, onGiveUp, onMinimise }: RunningProps) {
+  const now = useNow(true)
+  const paused = session.status === 'paused'
+  useWakeLock(!paused)
+  const scale = useTreeScale()
+  const p = progress(session, now)
+  const stage = stageForProgress(p)
+  const sp = getSpecies(session.speciesId)
+  return (
+    <section className="focus-immersive" style={{ backgroundImage: `url(${backdrop()})` }} aria-label="Focus session">
+      <div className="focus-shade" />
+      <div className="focus-center">
+        <TreePreview speciesId={session.speciesId} stage={stage} scale={scale} label={`${sp?.name} ${stage}`} />
+        <p className="clock xl" role="timer" aria-live="off">{formatClock(remainingMs(session, now))}</p>
+        <p className="focus-sub">{sp?.name} · {stage} · {Math.round(p * 100)}%{paused ? ' · paused' : ''}</p>
+        <div className="meter light" aria-hidden="true"><span style={{ width: `${p * 100}%` }} /></div>
+        {error && <p className="error" role="alert">{error}</p>}
+      </div>
+      <div className="focus-controls">
+        {paused ? (
+          <button className="btn primary big" onClick={onResume}>Resume</button>
+        ) : (
+          <button className="btn glass big" onClick={onPause}>Pause</button>
+        )}
+        <button className="btn glass" onClick={onMinimise}>Minimise</button>
+        <button className="btn glass danger" onClick={onGiveUp}>Give up</button>
+      </div>
+    </section>
+  )
+}
+
+interface FocusPageProps {
+  data: AppData
+  planted: PlantedTree | null
+  onDismissPlanted: () => void
+  onMinimise: () => void
+}
+
+export function FocusPage({ data, planted, onDismissPlanted, onMinimise }: FocusPageProps) {
   const completed = data.focusSessions.filter((s) => s.status === 'completed')
   const open = data.focusSessions.find((s) => s.status === 'active' || s.status === 'paused')
   const [speciesId, setSpeciesId] = useState('oak')
@@ -42,22 +117,10 @@ export function FocusPage({ data }: { data: AppData }) {
   const minutes = custom.trim() !== '' ? Number(custom) : preset
   const minutesValid = Number.isInteger(minutes) && minutes >= MIN_MINUTES && minutes <= MAX_MINUTES
   const [error, setError] = useState('')
-  const [justPlanted, setJustPlanted] = useState<FocusSession | null>(null)
-  const now = useNow(!!open)
   const stats = useMemo(
     () => computeStats({ sessions: data.focusSessions, trees: data.plantedTrees, habits: data.habits, completions: data.completions, today: todayKey() }),
     [data.focusSessions, data.plantedTrees, data.habits, data.completions],
   )
-
-  // Finish sessions whose time ran out (including while the app was closed or the phone asleep).
-  useEffect(() => {
-    if (open && open.status === 'active' && isFinished(open, now)) {
-      completeSession(open.id).then((t) => t && setJustPlanted(open)).catch(() => {})
-    }
-  }, [open, now])
-  useEffect(() => {
-    settleOpenSession().catch(() => {})
-  }, [])
 
   const run = async (fn: () => Promise<unknown>) => {
     setError('')
@@ -75,36 +138,17 @@ export function FocusPage({ data }: { data: AppData }) {
   const totalMinutes = completed.reduce((s, f) => s + f.plannedSeconds / 60, 0)
 
   if (open) {
-    const p = progress(open, now)
-    const stage = stageForProgress(p)
-    const sp = getSpecies(open.speciesId)
-    const paused = open.status === 'paused'
     return (
-      <section className="page focus-run">
-        <h1>Focus</h1>
-        <div className="card focus-card">
-          <div className="focus-stage"><TreePreview speciesId={open.speciesId} stage={stage} scale={6} label={`${sp?.name} ${stage}`} /></div>
-          <p className="clock" role="timer" aria-live="off">{formatClock(remainingMs(open, now))}</p>
-          <p className="muted">{sp?.name} · {stage} · {Math.round(p * 100)}%{paused ? ' · paused' : ''}</p>
-          <div className="meter" aria-hidden="true"><span style={{ width: `${p * 100}%` }} /></div>
-          <div className="row focus-actions">
-            {paused ? (
-              <button className="btn primary" onClick={() => run(() => resumeSession(open.id))}>Resume</button>
-            ) : (
-              <button className="btn" onClick={() => run(() => pauseSession(open.id))}>Pause</button>
-            )}
-            <button
-              className="btn danger"
-              onClick={() => {
-                if (window.confirm('Give up this session? No tree will be planted, but your other trees are safe.')) run(() => interruptSession(open.id))
-              }}
-            >
-              Give up
-            </button>
-          </div>
-          {error && <p className="error" role="alert">{error}</p>}
-        </div>
-      </section>
+      <RunningSession
+        session={open}
+        error={error}
+        onPause={() => run(() => pauseSession(open.id))}
+        onResume={() => run(() => resumeSession(open.id))}
+        onMinimise={onMinimise}
+        onGiveUp={() => {
+          if (window.confirm('Give up this session? No tree will be planted, but your other trees are safe.')) run(() => interruptSession(open.id))
+        }}
+      />
     )
   }
 
@@ -112,15 +156,15 @@ export function FocusPage({ data }: { data: AppData }) {
     <section className="page">
       <h1>Focus</h1>
 
-      {justPlanted && (
+      {planted && (
         <div className="card planted" role="status">
-          <TreePreview speciesId={justPlanted.speciesId} stage="mature" scale={4} />
+          <TreePreview speciesId={planted.speciesId} stage="mature" scale={4} />
           <div>
-            <h2>A {getSpecies(justPlanted.speciesId)?.name} was planted!</h2>
+            <h2>A {getSpecies(planted.speciesId)?.name} was planted!</h2>
             <p className="muted">It's now part of your woodland for good.</p>
             <div className="row">
               <Link className="btn primary" to="/habitat">See your woodland</Link>
-              <button className="btn" onClick={() => setJustPlanted(null)}>Dismiss</button>
+              <button className="btn" onClick={onDismissPlanted}>Dismiss</button>
             </div>
           </div>
         </div>
@@ -167,7 +211,7 @@ export function FocusPage({ data }: { data: AppData }) {
         </div>
         {!minutesValid && <p className="error" role="alert">Enter a whole number of minutes from {MIN_MINUTES} to {MAX_MINUTES}.</p>}
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="btn primary big" disabled={!minutesValid} onClick={() => run(() => startSession(speciesId, minutes))}>
+        <button className="btn primary big" disabled={!minutesValid} onClick={() => { onDismissPlanted(); run(() => startSession(speciesId, minutes)) }}>
           Plant {getSpecies(speciesId)?.name}{minutesValid ? ` · ${minutes} min` : ''}
         </button>
         <p className="muted small">Keep this app open or come back later: the timer follows the clock, not the screen. Giving up plants nothing but never harms the trees you already have.</p>

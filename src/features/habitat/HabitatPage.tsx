@@ -5,10 +5,11 @@ import { getSpecies } from '../../data/species'
 import { WILDLIFE } from '../../data/collection'
 import { AreaOverview } from './AreaOverview'
 import { fromDateKey } from '../../domain/dates'
+import { resolvePosition } from '../../domain/terrain'
 import { existingAreaIds, treesInArea } from '../../domain/woodland'
 import type { AreaView, HabitatGameApi } from '../../game/habitatGame'
 import { hashString, type WorldShape } from '../../game/pixel'
-import type { AppData } from '../../hooks'
+import { useIsPhone, type AppData } from '../../hooks'
 
 const BIOME_ID = 'woodland'
 
@@ -30,6 +31,8 @@ function useWorldShape(): WorldShape {
 export function HabitatPage({ data }: { data: AppData }) {
   const biome = getBiome(BIOME_ID)!
   const shape = useWorldShape()
+  const phone = useIsPhone()
+  const [sheetOpen, setSheetOpen] = useState(false)
   const trees = useMemo(() => data.plantedTrees.filter((t) => t.biomeId === BIOME_ID), [data.plantedTrees])
   const areaIds = useMemo(() => existingAreaIds(biome, trees), [biome, trees])
   const latest = areaIds[areaIds.length - 1]
@@ -53,6 +56,7 @@ export function HabitatPage({ data }: { data: AppData }) {
     () => ({
       key: areaKey,
       shape,
+      theme: areaDef(biome, parseAreaId(areaKey).index).theme,
       seed: hashString(areaKey),
       palette: biome.palette,
       wildlife: WILDLIFE.filter((w) => w.biome === BIOME_ID && discovered.has(w.id)).map((w) => ({
@@ -60,9 +64,13 @@ export function HabitatPage({ data }: { data: AppData }) {
         behaviour: w.behaviour,
         count: Math.min(3, 1 + Math.floor(areaTrees.length / 8)),
       })),
-      trees: areaTrees.map((t) => ({ id: t.id, speciesId: t.speciesId, stage: t.growthStage, x: t.position.x, y: t.position.y })),
+      // positions that would sit on water (older trees) are nudged for display only; records are never changed
+      trees: areaTrees.map((t) => {
+        const p = resolvePosition(areaKey, t.position)
+        return { id: t.id, speciesId: t.speciesId, stage: t.growthStage, x: p.x, y: p.y }
+      }),
     }),
-    [areaKey, shape, areaTrees, biome.palette, discovered],
+    [areaKey, shape, areaTrees, biome, discovered],
   )
 
   // Create the game once (Phaser is loaded lazily so it never slows down the other tabs).
@@ -96,16 +104,24 @@ export function HabitatPage({ data }: { data: AppData }) {
   const areaName = areaDef(biome, parseAreaId(areaKey).index)
 
   return (
-    <section className="page habitat-page">
-      <div className="page-head">
-        <div>
-          <h1>{biome.name}</h1>
-          <p className="muted small">{areaName.name} · {areaTrees.length} tree{areaTrees.length === 1 ? '' : 's'} · {trees.length} in total</p>
+    <section className={phone ? 'habitat-immersive' : 'page habitat-page'}>
+      {!phone && (
+        <div className="page-head">
+          <div>
+            <h1>{biome.name}</h1>
+            <p className="muted small">{areaName.name} · {areaTrees.length} tree{areaTrees.length === 1 ? '' : 's'} · {trees.length} in total</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className={`game-frame ${shape}`}>
+      {/* The same frame and host element are kept in both layouts, so the game is never torn down on resize. */}
+      <div className={`game-frame ${phone ? 'full' : shape}`}>
         <div ref={host} className="game-host" aria-label="Your woodland. Drag to pan, scroll or pinch to zoom, tap a tree for details." />
+        {phone && (
+          <button className="area-chip" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
+            <strong>{areaName.name}</strong> · {areaTrees.length} tree{areaTrees.length === 1 ? '' : 's'} ▾
+          </button>
+        )}
         {loadError && <p className="error pad">The woodland could not be loaded.</p>}
         {trees.length === 0 && (
           <div className="game-empty card">
@@ -123,9 +139,28 @@ export function HabitatPage({ data }: { data: AppData }) {
         )}
       </div>
 
-      <h2>Forest overview</h2>
-      <AreaOverview biome={biome} areaIds={areaIds} trees={trees} activeId={areaKey} onPick={setPicked} />
+      {!phone && (
+        <>
+          <h2>Forest overview</h2>
+          <AreaOverview biome={biome} areaIds={areaIds} trees={trees} activeId={areaKey} onPick={setPicked} />
+        </>
+      )}
 
+      {phone && sheetOpen && (
+        <>
+          <div className="sheet-backdrop" onClick={() => setSheetOpen(false)} />
+          <div className="sheet" role="dialog" aria-label="Areas">
+            <div className="sheet-head">
+              <div>
+                <h2>{biome.name}</h2>
+                <p className="muted small">{trees.length} tree{trees.length === 1 ? '' : 's'} planted in total</p>
+              </div>
+              <button className="btn" onClick={() => setSheetOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <AreaOverview biome={biome} areaIds={areaIds} trees={trees} activeId={areaKey} onPick={(id) => { setPicked(id); setSheetOpen(false) }} />
+          </div>
+        </>
+      )}
     </section>
   )
 }

@@ -7,8 +7,8 @@ export interface WildlifeDef {
   biome: string
   unlock: Rule
   rarity: 'common' | 'uncommon' | 'rare'
-  /** How it moves in the habitat scene. */
-  behaviour: 'flutter' | 'hop' | 'perch'
+  /** How it moves in the habitat scene. `shore` animals (frogs) stay around the pond; `hop` animals avoid water. */
+  behaviour: 'flutter' | 'hop' | 'perch' | 'shore'
 }
 
 /** Wildlife is attracted by what the user has grown. Kept deliberately simple for the first release. */
@@ -17,7 +17,7 @@ export const WILDLIFE: WildlifeDef[] = [
   { id: 'butterfly', name: 'Meadow Butterfly', description: 'Follows the wildflowers of a growing clearing.', biome: 'woodland', unlock: { type: 'trees', n: 3 }, rarity: 'common', behaviour: 'flutter' },
   { id: 'squirrel', name: 'Red Squirrel', description: 'Moves in once oaks start to cluster.', biome: 'woodland', unlock: { type: 'species-trees', speciesId: 'oak', n: 3 }, rarity: 'common', behaviour: 'hop' },
   { id: 'rabbit', name: 'Field Rabbit', description: 'Shelters in a woodland that is getting dense.', biome: 'woodland', unlock: { type: 'area-trees', n: 8 }, rarity: 'uncommon', behaviour: 'hop' },
-  { id: 'frog', name: 'Pond Frog', description: 'Arrives when an area is lush enough to feed it.', biome: 'woodland', unlock: { type: 'area-trees', n: 12 }, rarity: 'uncommon', behaviour: 'hop' },
+  { id: 'frog', name: 'Pond Frog', description: 'Arrives when an area is lush enough to feed it.', biome: 'woodland', unlock: { type: 'area-trees', n: 12 }, rarity: 'uncommon', behaviour: 'shore' },
   { id: 'blossom-butterfly', name: 'Blossom Butterfly', description: 'A rare pink butterfly that only visits a true blossom garden.', biome: 'woodland', unlock: { type: 'species-trees', speciesId: 'cherry-blossom', n: 3 }, rarity: 'rare', behaviour: 'flutter' },
 ]
 

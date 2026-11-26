@@ -17,6 +17,7 @@ export default defineConfig({
         short_name: 'Habitat',
         description: 'Build a better life, one habit at a time.',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: base,
         scope: base,
         background_color: '#1f2a1d',

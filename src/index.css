@@ -197,13 +197,10 @@ input, select {
 .game-frame { position: relative; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: #2a3a24; }
 .game-host { width: 100%; touch-action: none; }
 /* Frame is sized to the world's shape, so there is no dead space; capped so it never outgrows the screen. */
-.game-frame.landscape .game-host { aspect-ratio: 20 / 14; max-height: 74dvh; }
-.game-frame.portrait .game-host { aspect-ratio: 14 / 20; max-height: 74dvh; }
+.game-frame.landscape .game-host { aspect-ratio: 20 / 14; width: min(100%, calc(74dvh * 20 / 14)); margin: 0 auto; }
+.game-frame.portrait .game-host { aspect-ratio: 14 / 24; width: min(100%, calc(74dvh * 14 / 24)); margin: 0 auto; }
 .tree-info { position: absolute; left: 8px; right: 8px; top: 8px; padding: 8px 10px; background: color-mix(in srgb, var(--surface) 92%, transparent); pointer-events: none; }
-@media (max-width: 767px) {
-  /* edge-to-edge on phones: every pixel of width goes to the world */
-  .game-frame { margin: 0 -16px; border-radius: 0; border-left: 0; border-right: 0; }
-}
+
 .game-host canvas { display: block; touch-action: none; image-rendering: pixelated; }
 .game-empty { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(92%, 340px); text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .area-tabs { flex-wrap: nowrap; overflow-x: auto; }
@@ -231,3 +228,113 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .toast { position: sticky; top: calc(env(safe-area-inset-top) + 8px); z-index: 20; margin: 8px 16px 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.25); }
 .toast > div { flex: 1; min-width: 0; }
 .tiles.four { grid-template-columns: repeat(2, 1fr); } @media (min-width: 560px) { .tiles.four { grid-template-columns: repeat(4, 1fr); } }
+
+/* ---------- Immersive modes ---------- */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* Habitat on phones: the world is the whole screen; the nav floats above it as a pill. */
+.immersive-habitat .main { padding-bottom: 0; }
+.immersive-habitat .topbar { position: fixed; top: 0; right: 0; z-index: 16; padding: calc(env(safe-area-inset-top) + 10px) 12px 0; pointer-events: none; }
+.immersive-habitat .topbar > * { pointer-events: auto; background: color-mix(in srgb, var(--surface) 82%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.immersive-habitat .nav { display: none; } /* replaced by the floating menu button */
+.immersive-habitat .toast { position: fixed; left: 16px; right: 16px; top: calc(env(safe-area-inset-top) + 64px); margin: 0; z-index: 17; }
+.habitat-immersive { display: block; }
+.game-frame.full { position: fixed; inset: 0; z-index: 1; margin: 0; border: 0; border-radius: 0; }
+.game-frame.full .game-host { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; }
+.game-frame.full .game-empty { bottom: calc(env(safe-area-inset-bottom) + 84px); }
+.game-frame.full .tree-info { top: calc(env(safe-area-inset-top) + 64px); }
+.area-chip {
+  position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 12px; z-index: 12; min-height: 44px; max-width: 60vw; padding: 0 14px;
+  border-radius: 999px; border: 1px solid var(--line); color: var(--ink); font: inherit; cursor: pointer;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sheet-backdrop { position: fixed; inset: 0; z-index: 23; /* above the menu button (22), so it sits behind the sheet */ background: rgba(0, 0, 0, .4); }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 24; max-height: 72dvh; overflow: auto;
+  background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .4);
+  padding: 14px 16px calc(env(safe-area-inset-bottom) + 18px);
+}
+.sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+
+/* Focus: while a session runs the whole screen is the tree. */
+.immersive-focus .nav, .immersive-focus .topbar { display: none; }
+.immersive-focus .main { padding: 0; }
+.focus-immersive {
+  position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  background-size: cover; background-position: center; image-rendering: pixelated; color: #f4f1e4;
+  padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px);
+}
+.focus-shade { position: absolute; inset: 0; background: linear-gradient(rgba(10, 20, 8, .62), rgba(10, 20, 8, .15) 45%, rgba(10, 20, 8, .72)); }
+.focus-center, .focus-controls { position: relative; }
+.focus-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; width: 100%; }
+.focus-center .tree-preview { filter: drop-shadow(0 6px 0 rgba(0, 0, 0, .25)); }
+.clock.xl { font-size: clamp(3.6rem, 19vw, 6.5rem); color: #fff; text-shadow: 0 3px 14px rgba(0, 0, 0, .55); }
+.focus-sub { margin: 0; color: #dfe6cf; text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
+.meter.light { background: rgba(255, 255, 255, .22); }
+.meter.light > span { background: #b9e08a; }
+.focus-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: 100%; }
+.btn.glass { background: rgba(20, 30, 16, .55); color: #f4f1e4; border-color: rgba(255, 255, 255, .28); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.btn.glass.danger { color: #ffb3a6; border-color: rgba(255, 179, 166, .5); }
+
+/* Minimised session: a small frosted chip, not a banner. */
+.focus-bar {
+  position: sticky; top: calc(env(safe-area-inset-top) + 8px); z-index: 19; width: fit-content; margin: 8px auto 0;
+  min-height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border-radius: 999px;
+  text-decoration: none; font-size: .9rem; font-weight: 600; color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 72%, transparent); border: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
+}
+.focus-bar-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: focus-pulse 1.8s ease-in-out infinite; }
+.focus-bar.paused .focus-bar-dot { animation: none; background: var(--accent); }
+.focus-bar-time { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .focus-bar-dot { animation: none; } }
+@keyframes focus-pulse { 50% { opacity: .35; } }
+
+/* ---------- Floating menu (full-screen habitat) ---------- */
+.fm-pill {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 14px); z-index: 22;
+  min-height: 48px; padding: 0 18px; display: flex; align-items: center; gap: 10px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
+  background: color-mix(in srgb, var(--surface) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35); transition: opacity .35s;
+}
+.fm-pill.faded { opacity: .45; }
+.fm-pill svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.fm-sep { width: 1px; height: 20px; background: var(--line); }
+.focus-bar-dot.paused { animation: none; background: var(--accent); }
+.fm-overlay {
+  position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  padding: calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 92px);
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15); backdrop-filter: blur(16px) saturate(1.15);
+  overflow: auto;
+}
+.fm-content { width: min(100%, 420px); display: flex; flex-direction: column; gap: 12px; }
+.fm-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.fm-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 92px; padding: 10px;
+  border-radius: 16px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line);
+  color: var(--ink); text-decoration: none; font-weight: 600;
+}
+.fm-item svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.fm-item.active { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+.fm-session {
+  display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border-radius: 16px; text-decoration: none; font-weight: 600;
+  color: var(--ink); background: var(--green-soft); border: 1px solid var(--green);
+}
+.fm-session > :nth-child(2) { flex: 1; }
+.fm-settings { text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; color: var(--muted); text-decoration: none; }
+@media (prefers-reduced-motion: no-preference) { .fm-overlay { animation: fm-in .18s ease-out; } }
+@keyframes fm-in { from { opacity: 0; } }
+
+.rotate-overlay {
+  position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center;
+  background: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+}
+.rotate-overlay svg { width: 56px; height: 56px; fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-90deg); }
+@media (prefers-reduced-motion: no-preference) { .rotate-overlay svg { animation: rotate-hint 2.2s ease-in-out infinite; } }
+@keyframes rotate-hint { 0%, 30% { transform: rotate(-90deg); } 70%, 100% { transform: rotate(0deg); } }

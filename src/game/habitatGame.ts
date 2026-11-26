@@ -1,6 +1,9 @@
 import Phaser from 'phaser'
+import type { AreaTheme } from '../data/biomes'
 import type { GrowthStage } from '../domain/types'
-import { SPRITE_H, SPRITE_W, groundCanvas, treeCanvas, wildlifeCanvas, worldSize, type WorldShape, type WorldSize } from './pixel'
+import { areaTerrain, type Terrain } from '../domain/terrain'
+import { dryPoint, hopTarget, shoreTarget } from '../domain/wildlifeMove'
+import { SPRITE_H, SPRITE_W, groundCanvas, treeCanvas, wildlifeFrames, worldSize, type WorldShape, type WorldSize } from './pixel'
 
 /** The only data the game sees: plain view models. No React, no database, no sync. */
 export interface TreeView {
@@ -11,7 +14,7 @@ export interface TreeView {
   y: number
 }
 
-export type Behaviour = 'flutter' | 'hop' | 'perch'
+export type Behaviour = 'flutter' | 'hop' | 'perch' | 'shore'
 
 export interface WildlifeView {
   id: string
@@ -21,6 +24,7 @@ export interface WildlifeView {
 
 export interface AreaView {
   key: string // unique per area, also used to seed its terrain
+  theme: AreaTheme
   shape: WorldShape // chosen from the viewport; tree positions are fractions so they work in either
   seed: number
   palette: { grass: string[]; path: string }
@@ -50,12 +54,14 @@ interface Critter {
   arc: number
   flap: number
   phase: number
+  angle: number // position around the pond, for shore animals
+  id: string
+  frame: string // current texture frame, so we only swap when it changes
 }
 
 const MARGIN = 24
-/** On phones the world opens zoomed in (trees are small otherwise). Pinch out returns to the full view. */
+/** Phones open centred on the trees rather than the middle of the map. */
 const PHONE_MAX_WIDTH = 600
-const PHONE_START_ZOOM = 1.3
 const MAX_ZOOM = 8
 
 class WoodlandScene extends Phaser.Scene {
@@ -63,15 +69,18 @@ class WoodlandScene extends Phaser.Scene {
   private ready = false
   private ground?: Phaser.GameObjects.Image
   private treeSprites = new Map<string, Phaser.GameObjects.Image>()
-  private ring?: Phaser.GameObjects.Graphics
+  /** Objects that make up the selection highlight; rebuilt whenever the selection or the tree moves. */
+  private highlight: Phaser.GameObjects.GameObject[] = []
   private selectedId: string | null = null
   private currentKey = ''
   private world: WorldSize = worldSize('landscape')
+  private terrain: Terrain = areaTerrain('woodland:0')
   private ambient: Phaser.GameObjects.GameObject[] = []
   private critters: Critter[] = []
   private wildlifeKey = ''
   private treePoints: { x: number; y: number }[] = []
-  private fitZoom = 1
+  /** Smallest allowed zoom: the world always covers the viewport, so the dark margin is never shown. */
+  private minZoom = 1
   private dragged = false
   private pinchDist = 0
 
@@ -84,7 +93,6 @@ class WoodlandScene extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor('#2a3a24')
-    this.ring = this.add.graphics().setDepth(100000)
     this.input.addPointer(1)
     this.scale.on('resize', () => this.fit(false))
     this.input.on('pointerdown', () => (this.dragged = false))
@@ -112,11 +120,14 @@ class WoodlandScene extends Phaser.Scene {
     const viewKey = `${area.key}|${area.shape}`
     const changedArea = viewKey !== this.currentKey
     this.currentKey = viewKey
-    if (changedArea) this.world = worldSize(area.shape)
+    if (changedArea) {
+      this.world = worldSize(area.shape)
+      this.terrain = areaTerrain(area.key)
+    }
 
     if (changedArea) {
       this.ground?.destroy()
-      const key = this.texture(`ground:${viewKey}`, () => groundCanvas(area.seed, area.palette, area.shape))
+      const key = this.texture(`ground:${viewKey}`, () => groundCanvas(area.key, area.theme, area.palette, area.shape))
       this.ground = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-1)
       this.treeSprites.forEach((s) => s.destroy())
       this.treeSprites.clear()
@@ -149,6 +160,8 @@ class WoodlandScene extends Phaser.Scene {
         this.treeSprites.delete(id)
       }
 
+    // keep the highlight attached if the selected tree was moved or its sprite changed
+    if (this.selectedId) this.selectTree(this.treeSprites.has(this.selectedId) ? this.selectedId : null)
     if (changedArea && this.scale.width < PHONE_MAX_WIDTH && this.treeSprites.size > 0) this.centerOnTrees()
     this.treePoints = [...this.treeSprites.values()].map((s) => ({ x: s.x, y: s.y - SPRITE_H * 0.55 }))
     // rebuild critters only when the set of wildlife (or the area) changes, so they don't jump on every new tree
@@ -163,12 +176,19 @@ class WoodlandScene extends Phaser.Scene {
     this.critters.forEach((c) => c.s.destroy())
     this.critters = []
     for (const w of list) {
-      const key = this.texture(`wild:${w.id}`, () => wildlifeCanvas(w.id))
+      const frames = wildlifeFrames(w.id)
+      const key = this.texture(`wild:${w.id}:idle`, () => frames.idle)
+      frames.moving.forEach((f, i) => this.texture(`wild:${w.id}:m${i}`, () => f))
       for (let i = 0; i < w.count; i++) {
-        const x = MARGIN + Math.random() * (this.world.w - 2 * MARGIN)
-        const y = MARGIN + Math.random() * (this.world.h - 2 * MARGIN)
+        // flyers may start anywhere; ground and shore animals start on dry land, frogs at the pond's edge
+        const ang = Math.random() * Math.PI * 2
+        const start =
+          w.behaviour === 'shore' ? shoreTarget(this.terrain, this.world.w, this.world.h, ang)
+          : w.behaviour === 'flutter' ? { x: MARGIN + Math.random() * (this.world.w - 2 * MARGIN), y: MARGIN + Math.random() * (this.world.h - 2 * MARGIN), angle: ang }
+          : { ...dryPoint(this.terrain, this.world.w, this.world.h), angle: ang }
+        const { x, y } = start
         const s = this.add.image(Math.round(x), Math.round(y), key).setOrigin(0.5, 1).setDepth(y)
-        this.critters.push({ s, behaviour: w.behaviour, wait: Math.random() * 2000, t: 0, dur: 0, x0: x, y0: y, x1: x, y1: y, arc: 0, flap: 0, phase: Math.random() * 6 })
+        this.critters.push({ s, behaviour: w.behaviour, wait: Math.random() * 2000, t: 0, dur: 0, x0: x, y0: y, x1: x, y1: y, arc: 0, flap: 0, phase: Math.random() * 6, angle: start.angle, id: w.id, frame: 'idle' })
       }
     }
   }
@@ -177,24 +197,55 @@ class WoodlandScene extends Phaser.Scene {
     for (const c of this.critters) this.stepCritter(c, delta)
   }
 
+  /** Picks the sprite frame: wings flap while flying, a leap pose while hopping, a resting pose otherwise. */
+  private animate(c: Critter, dt: number, moving: boolean) {
+    c.flap += dt
+    const frames = wildlifeFrames(c.id).moving.length
+    let frame = 'idle'
+    if (c.behaviour === 'flutter') frame = `m${Math.floor(c.flap / 110) % frames}` // butterflies never stop flapping
+    else if (c.behaviour === 'perch') frame = moving ? `m${Math.floor(c.flap / 70) % frames}` : 'idle' // up, level, down, level: about four beats a second
+    else if (moving) frame = 'm0'
+    if (frame !== c.frame) {
+      c.frame = frame
+      c.s.setTexture(`wild:${c.id}:${frame}`)
+    }
+  }
+
   private pickTarget(c: Critter) {
+    const { w, h } = this.world
     c.x0 = c.s.x
     c.y0 = c.s.y
-    if (c.behaviour === 'perch' && this.treePoints.length && Math.random() < 0.85) {
-      const p = this.treePoints[Math.floor(Math.random() * this.treePoints.length)]
-      c.x1 = p.x + (Math.random() - 0.5) * 8
-      c.y1 = p.y
+    c.arc = 4
+    if (c.behaviour === 'perch') {
+      // flies between trees; if it has to come down it only lands on dry ground, never in the water
+      if (this.treePoints.length && Math.random() < 0.85) {
+        const p = this.treePoints[Math.floor(Math.random() * this.treePoints.length)]
+        c.x1 = p.x + (Math.random() - 0.5) * 8
+        c.y1 = p.y
+      } else {
+        const p = dryPoint(this.terrain, w, h)
+        c.x1 = p.x
+        c.y1 = p.y
+      }
       c.dur = 900 + Math.hypot(c.x1 - c.x0, c.y1 - c.y0) * 14
       c.arc = 10
     } else if (c.behaviour === 'hop') {
-      const ang = Math.random() * Math.PI * 2
-      c.x1 = Phaser.Math.Clamp(c.x0 + Math.cos(ang) * (10 + Math.random() * 16), MARGIN, this.world.w - MARGIN)
-      c.y1 = Phaser.Math.Clamp(c.y0 + Math.sin(ang) * (6 + Math.random() * 10), MARGIN + 12, this.world.h - MARGIN)
-      c.dur = 320
-      c.arc = 4
+      // ground animals hop on dry land only (crossing the stream by the bridge), or stay put this turn
+      const to = hopTarget(this.terrain, w, h, { x: c.x0, y: c.y0 })
+      c.x1 = to ? to.x : c.x0
+      c.y1 = to ? to.y : c.y0
+      c.dur = to ? 320 : 200
+    } else if (c.behaviour === 'shore') {
+      // frogs stay on the bank around the pond
+      const to = shoreTarget(this.terrain, w, h, c.angle)
+      c.angle = to.angle
+      c.x1 = to.x
+      c.y1 = to.y
+      c.dur = 360
     } else {
-      c.x1 = MARGIN + Math.random() * (this.world.w - 2 * MARGIN)
-      c.y1 = MARGIN + Math.random() * (this.world.h - 2 * MARGIN)
+      // butterflies drift anywhere, including over the water
+      c.x1 = MARGIN + Math.random() * (w - 2 * MARGIN)
+      c.y1 = MARGIN + Math.random() * (h - 2 * MARGIN)
       c.dur = 2200 + Math.random() * 2600
       c.arc = 0
     }
@@ -205,6 +256,7 @@ class WoodlandScene extends Phaser.Scene {
   private stepCritter(c: Critter, dt: number) {
     if (c.wait > 0) {
       c.wait -= dt
+      this.animate(c, dt, false)
       return
     }
     if (c.dur === 0) this.pickTarget(c)
@@ -217,15 +269,14 @@ class WoodlandScene extends Phaser.Scene {
       c.phase += dt / 260
       x += Math.cos(c.phase * 1.3) * 5
       y += Math.sin(c.phase) * 4
-      c.flap += dt
-      c.s.setScale(1, c.flap % 240 < 120 ? 1 : 0.65)
     }
+    this.animate(c, dt, true)
     c.s.setPosition(Math.round(x), Math.round(y))
     // flyers draw above the trees, ground animals sort with them by y
-    c.s.setDepth(c.behaviour === 'hop' ? y : 50000 + y)
+    c.s.setDepth(c.behaviour === 'hop' || c.behaviour === 'shore' ? y : 50000 + y)
     if (p >= 1) {
       c.dur = 0
-      c.wait = c.behaviour === 'hop' ? 400 + Math.random() * 2200 : c.behaviour === 'perch' ? 1500 + Math.random() * 3500 : 200 + Math.random() * 600
+      c.wait = c.behaviour === 'hop' || c.behaviour === 'shore' ? 400 + Math.random() * 2200 : c.behaviour === 'perch' ? 1500 + Math.random() * 3500 : 200 + Math.random() * 600
     }
   }
 
@@ -284,10 +335,9 @@ class WoodlandScene extends Phaser.Scene {
     const w = this.scale.width
     const h = this.scale.height
     if (w === 0 || h === 0) return
-    this.fitZoom = Math.min(w / (this.world.w + 2 * 8), h / (this.world.h + 2 * 8))
-    const start = this.fitZoom * (w < PHONE_MAX_WIDTH ? PHONE_START_ZOOM : 1)
-    if (reset) cam.setZoom(start)
-    else if (cam.zoom < this.fitZoom) cam.setZoom(this.fitZoom)
+    this.minZoom = Math.max(w / this.world.w, h / this.world.h)
+    if (reset) cam.setZoom(this.minZoom)
+    else if (cam.zoom < this.minZoom) cam.setZoom(this.minZoom)
     this.clamp()
     if (reset) cam.centerOn(this.world.w / 2, this.world.h / 2)
   }
@@ -301,18 +351,13 @@ class WoodlandScene extends Phaser.Scene {
   }
 
   private clamp() {
-    const cam = this.cameras.main
-    // allow the world to be centred when smaller than the viewport, and panned when larger
-    const vw = cam.width / cam.zoom
-    const vh = cam.height / cam.zoom
-    const padX = Math.max(8, (vw - this.world.w) / 2 + 8)
-    const padY = Math.max(8, (vh - this.world.h) / 2 + 8)
-    cam.setBounds(-padX, -padY, this.world.w + padX * 2, this.world.h + padY * 2)
+    // The camera can only show the terrain itself. Zoom is capped at "cover", so it always fills the viewport.
+    this.cameras.main.setBounds(0, 0, this.world.w, this.world.h)
   }
 
   private zoomBy(f: number) {
     const cam = this.cameras.main
-    cam.setZoom(Phaser.Math.Clamp(cam.zoom * f, this.fitZoom, MAX_ZOOM))
+    cam.setZoom(Phaser.Math.Clamp(cam.zoom * f, this.minZoom, MAX_ZOOM))
     this.clamp()
   }
 
@@ -357,12 +402,24 @@ class WoodlandScene extends Phaser.Scene {
 
   private selectTree(id: string | null) {
     this.selectedId = id
-    this.ring?.clear()
+    this.tweens.killTweensOf(this.highlight)
+    this.highlight.forEach((o) => o.destroy())
+    this.highlight = []
     const s = id ? this.treeSprites.get(id) : null
-    if (s && this.ring) {
-      this.ring.lineStyle(1, 0xfff2a8, 1)
-      this.ring.strokeEllipse(s.x, s.y - 1, 22, 8)
-    }
+    if (!s) return
+
+    // A soft pool of light on the ground. It sits just behind the tree, so the trunk stands in it and
+    // trees nearer the camera still cover it, like a real ground mark.
+    const pool = this.add.graphics().setDepth(s.depth - 0.5)
+    pool.fillStyle(0xfff2a8, 0.3).fillEllipse(s.x, s.y - 1, 30, 11)
+    pool.lineStyle(1, 0xfff2a8, 0.9).strokeEllipse(s.x, s.y - 1, 30, 11)
+    this.tweens.add({ targets: pool, alpha: 0.55, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+
+    // A crisp one-pixel outline in the sprite's own pixel grid: four tinted copies offset behind the tree.
+    const outline = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dx, dy]) =>
+      this.add.image(s.x + dx, s.y + dy, s.texture.key).setOrigin(0.5, 1).setTint(0xfff2a8).setTintMode(Phaser.TintModes.FILL).setDepth(s.depth - 0.2),
+    )
+    this.highlight = [pool, ...outline]
   }
 
   get selected() {

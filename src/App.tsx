@@ -1,18 +1,22 @@
-import { Suspense, lazy } from 'react'
-import { NavLink, Navigate, Route, Routes } from 'react-router'
-import { useAppData } from './hooks'
+import { Suspense, lazy, useEffect, useState } from 'react'
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
+import { FloatingMenu } from './components/FloatingMenu'
+import { RotatePrompt } from './components/RotatePrompt'
+import { FocusBar } from './components/FocusBar'
+import { ACHIEVEMENTS, getWildlife } from './data/collection'
+import { getSpecies } from './data/species'
+import { remainingMs } from './domain/focus'
+import type { Discovery, PlantedTree } from './domain/types'
 import { ChallengesPage } from './features/challenges/ChallengesPage'
+import { CollectionPage } from './features/collection/CollectionPage'
+import { FocusPage } from './features/focus/FocusPage'
 import { GrowthPage } from './features/growth/GrowthPage'
+import { HabitatPage } from './features/habitat/HabitatPage'
 import { InsightsPage } from './features/insights/InsightsPage'
 import { SettingsPage } from './features/settings/SettingsPage'
-import { CollectionPage } from './features/collection/CollectionPage'
+import { useAppData, useIsPhone } from './hooks'
+import { settleOpenSession } from './persistence/focusRepo'
 import { syncDiscoveries } from './persistence/progressRepo'
-import { useEffect, useState } from 'react'
-import { getSpecies } from './data/species'
-import { getWildlife, ACHIEVEMENTS } from './data/collection'
-import type { Discovery } from './domain/types'
-import { FocusPage } from './features/focus/FocusPage'
-import { HabitatPage } from './features/habitat/HabitatPage'
 
 // Dev-only: import.meta.env.DEV is statically false in production builds, so this module is dropped from the bundle.
 const DevToolsPage = import.meta.env.DEV ? lazy(() => import('./dev/DevToolsPage')) : null
@@ -34,7 +38,19 @@ const NAV = [
 
 export default function App() {
   const data = useAppData()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const isPhone = useIsPhone()
   const [toast, setToast] = useState<Discovery[]>([])
+  const [planted, setPlanted] = useState<PlantedTree | null>(null)
+  // Minimising is tied to one session, so the next session always starts full-screen.
+  const [minimisedFor, setMinimisedFor] = useState<string | null>(null)
+  const [navFaded, setNavFaded] = useState(false)
+
+  const open = data?.focusSessions.find((s) => s.status === 'active' || s.status === 'paused')
+  const minimised = !!open && minimisedFor === open.id
+  const immersiveFocus = !!open && pathname === '/focus' && !minimised
+  const immersiveHabitat = isPhone && pathname === '/habitat'
 
   // Record anything newly earned whenever progress changes. Idempotent, so repeat runs are harmless.
   const progressKey = data ? `${data.plantedTrees.length}|${data.focusSessions.length}|${data.completions.length}|${data.habits.length}` : ''
@@ -45,18 +61,57 @@ export default function App() {
       .catch(() => {})
   }, [progressKey])
 
+  // App-level so a minimised session still finishes (and plants) on any screen, and a session that
+  // ended while the app was closed is settled on launch. Safe to run repeatedly: completion is idempotent.
+  const openId = open?.id
+  const openStatus = open?.status
+  const openStartedAt = open?.startedAt
+  const openPausedMs = open?.pausedMs
+  useEffect(() => {
+    if (!open || open.status !== 'active') return
+    const check = () => settleOpenSession().then((t) => t && setPlanted(t)).catch(() => {})
+    check()
+    const timer = window.setTimeout(check, remainingMs(open, Date.now()) + 100)
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, openStatus, openStartedAt, openPausedMs])
+
+  // Floating nav on the full-screen habitat fades after a few idle seconds; any touch brings it back.
+  useEffect(() => {
+    if (!immersiveHabitat) return
+    let timer = window.setTimeout(() => setNavFaded(true), 4000)
+    const wake = () => {
+      setNavFaded(false)
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => setNavFaded(true), 4000)
+    }
+    document.addEventListener('pointerdown', wake)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('pointerdown', wake)
+      setNavFaded(false)
+    }
+  }, [immersiveHabitat])
+
   const energy = data?.ledger.reduce((s, l) => s + l.amount, 0) ?? 0
+  const showToast = toast.length > 0 && !open // hold discoveries back until the session is over
 
   return (
-    <div className="shell">
-      <aside className="nav" aria-label="Primary">
+    <div className={`shell ${immersiveFocus ? 'immersive-focus' : ''} ${immersiveHabitat ? 'immersive-habitat' : ''} ${navFaded ? 'nav-faded' : ''}`}>
+      <aside className={`nav ${navFaded ? 'faded' : ''}`} aria-label="Primary">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-name">Habitat</span>
         </div>
         <nav>
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className="nav-link">
+            <NavLink key={n.to} to={n.to} className="nav-link" onClick={() => n.to === '/focus' && setMinimisedFor(null)}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d={n.icon} />
               </svg>
@@ -72,6 +127,11 @@ export default function App() {
         </NavLink>
       </aside>
 
+      <RotatePrompt />
+      {immersiveHabitat && (
+        <FloatingMenu items={NAV} session={open} faded={navFaded} onItemClick={(to) => to === '/focus' && setMinimisedFor(null)} />
+      )}
+
       <main className="main">
         <header className="topbar">
           <NavLink to="/settings" className="topbar-settings" aria-label="Settings">
@@ -84,7 +144,18 @@ export default function App() {
             <strong>{energy}</strong> NE
           </div>
         </header>
-        {toast.length > 0 && (
+        {open && !immersiveFocus && !immersiveHabitat && <FocusBar session={open} onReturn={() => setMinimisedFor(null)} />}
+        {planted && !open && pathname !== '/focus' && (
+          <div className="toast planted-toast" role="status">
+            <div>
+              <strong>A {getSpecies(planted.speciesId)?.name} was planted!</strong>
+              <p className="small">Your focus session is complete.</p>
+            </div>
+            <NavLink to="/habitat" className="btn" onClick={() => setPlanted(null)}>See it</NavLink>
+            <button className="btn" onClick={() => setPlanted(null)} aria-label="Dismiss">✕</button>
+          </div>
+        )}
+        {showToast && (
           <div className="toast" role="status">
             <div>
               <strong>{toast.length === 1 ? 'New discovery!' : `${toast.length} new discoveries!`}</strong>
@@ -104,7 +175,21 @@ export default function App() {
             <Route path="/insights" element={<InsightsPage data={data} />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/habitat" element={<HabitatPage data={data} />} />
-            <Route path="/focus" element={<FocusPage data={data} />} />
+            <Route
+              path="/focus"
+              element={
+                <FocusPage
+                  data={data}
+                  planted={planted}
+                  onDismissPlanted={() => setPlanted(null)}
+                  onMinimise={() => {
+                    if (!open) return
+                    navigate('/growth')
+                    setMinimisedFor(open.id)
+                  }}
+                />
+              }
+            />
             <Route path="/collection" element={<CollectionPage data={data} />} />
             {DevToolsPage && (
               <Route path="/test" element={<Suspense fallback={null}><DevToolsPage data={data} /></Suspense>} />

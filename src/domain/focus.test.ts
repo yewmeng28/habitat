@@ -66,3 +66,132 @@ describe('woodland placement', () => {
     expect(slotPosition('woodland:0', 3, 12)).toEqual(slots[3])
   })
 })
+
+import { areaTerrain, isBlocked, pathYAt, streamXAt } from './terrain'
+
+describe('terrain-aware placement', () => {
+  it('is deterministic per area and differs between areas', () => {
+    expect(areaTerrain('woodland:0')).toEqual(areaTerrain('woodland:0'))
+    expect(areaTerrain('woodland:0')).not.toEqual(areaTerrain('woodland:1'))
+  })
+  it('never plants in the pond, across the stream or on the path', () => {
+    for (let a = 0; a < 8; a++) {
+      const id = `woodland:${a}`
+      const t = areaTerrain(id)
+      const capacity = a === 0 ? 12 : 25
+      for (let i = 0; i < capacity; i++) {
+        const p = slotPosition(id, i, capacity)
+        expect(isBlocked(t, p.x, p.y), `${id}#${i}`).toBe(false)
+      }
+    }
+  })
+  it('keeps the stream and path inside the world', () => {
+    const t = areaTerrain('woodland:3')
+    for (let x = 0; x <= 1; x += 0.05) expect(pathYAt(t, x)).toBeGreaterThan(0.5)
+    for (let y = t.pond.y; y <= 1; y += 0.05) {
+      expect(streamXAt(t, y)).toBeGreaterThan(0)
+      expect(streamXAt(t, y)).toBeLessThan(1)
+    }
+  })
+})
+
+describe('streams are only in some areas', () => {
+  it('varies between areas, and is stable for an area', () => {
+    const flags = Array.from({ length: 12 }, (_, i) => areaTerrain(`woodland:${i}`).hasStream)
+    expect(flags.some(Boolean)).toBe(true)
+    expect(flags.some((f) => !f)).toBe(true)
+    expect(areaTerrain('woodland:2').hasStream).toBe(areaTerrain('woodland:2').hasStream)
+  })
+  it('does not shift any area’s pond or path', () => {
+    const t = areaTerrain('woodland:0')
+    expect(t.pond.x === 0.2 || t.pond.x === 0.8).toBe(true)
+  })
+})
+
+describe('trees stay out of the water (independent geometry check)', () => {
+  // Re-derives the footprint test by brute-force sampling pixels, not by reusing isBlocked's maths.
+  const shapes = [{ w: 320, h: 224 }, { w: 224, h: 384 }]
+  const inPond = (t: ReturnType<typeof areaTerrain>, x: number, y: number, W: number, H: number) =>
+    ((x - t.pond.x * W) / 28) ** 2 + ((y - t.pond.y * H) / 15) ** 2 < 1
+  const inStream = (t: ReturnType<typeof areaTerrain>, x: number, y: number, W: number, H: number) =>
+    t.hasStream && y > t.pond.y * H && Math.abs(x - streamXAt(t, y / H) * W) < 3
+  it('no sampled crown pixel is over the pond or stream, in either world shape', () => {
+    for (let a = 0; a < 7; a++) {
+      const id = `woodland:${a}`
+      const t = areaTerrain(id)
+      const capacity = a === 0 ? 12 : 25
+      for (let i = 0; i < capacity; i++) {
+        const p = slotPosition(id, i, capacity)
+        for (const { w, h } of shapes)
+          for (let dx = -10; dx <= 10; dx += 2)
+            for (let dy = -28; dy <= 0; dy += 2) {
+              const x = p.x * w + dx
+              const y = p.y * h + dy
+              expect(inPond(t, x, y, w, h) || inStream(t, x, y, w, h), `${id}#${i} ${w}x${h}`).toBe(false)
+            }
+      }
+    }
+  })
+  it('nudges a tree stored on the pond to clear ground, and leaves a clear one alone', async () => {
+    const { resolvePosition } = await import('./terrain')
+    const t = areaTerrain('woodland:0')
+    const onPond = { x: t.pond.x, y: t.pond.y }
+    const moved = resolvePosition('woodland:0', onPond)
+    expect(isBlocked(t, moved.x, moved.y)).toBe(false)
+    const clear = slotPosition('woodland:0', 2, 12)
+    expect(resolvePosition('woodland:0', clear)).toEqual(clear)
+  })
+})
+
+import { mulberry32 } from './rng'
+import { bridgePoint, isInWater } from './terrain'
+import { dryBetween, dryPoint, hopTarget, shoreTarget, wet } from './wildlifeMove'
+
+describe('wildlife movement', () => {
+  const sizes = [{ w: 320, h: 224 }, { w: 224, h: 384 }]
+  const areas = Array.from({ length: 10 }, (_, i) => `woodland:${i}`)
+
+  it('knows where the water is, and treats the bridge as dry', () => {
+    const t = areaTerrain('woodland:0')
+    expect(isInWater(t, t.pond.x * 320, t.pond.y * 224, 320, 224)).toBe(true)
+    expect(isInWater(t, 160, 215, 320, 224)).toBe(false)
+    const withStream = areas.map(areaTerrain).find((x) => x.hasStream)!
+    const b = bridgePoint(withStream, 320, 224)
+    expect(isInWater(withStream, b.x, b.y, 320, 224)).toBe(false)
+    expect(isInWater(withStream, streamXAt(withStream, (b.y + 40) / 224) * 320, b.y + 40, 320, 224)).toBe(true)
+  })
+
+  it('ground animals never hop into or across water', () => {
+    const rand = mulberry32(7)
+    for (const id of areas) {
+      const t = areaTerrain(id)
+      for (const { w, h } of sizes) {
+        let p = dryPoint(t, w, h, rand)
+        for (let i = 0; i < 400; i++) {
+          expect(wet(t, w, h, p), `${id} ${w}x${h} step ${i}`).toBe(false)
+          const to = hopTarget(t, w, h, p, rand)
+          if (to) {
+            expect(dryBetween(t, w, h, p, to)).toBe(true)
+            p = to
+          }
+        }
+      }
+    }
+  })
+
+  it('frogs stay on the shore of the pond, never in the water', () => {
+    const rand = mulberry32(11)
+    for (const id of areas) {
+      const t = areaTerrain(id)
+      for (const { w, h } of sizes) {
+        let angle = 1
+        for (let i = 0; i < 300; i++) {
+          const s = shoreTarget(t, w, h, angle, rand)
+          angle = s.angle
+          expect(wet(t, w, h, s), `${id} ${w}x${h} step ${i}`).toBe(false)
+          expect(Math.hypot((s.x - t.pond.x * w) / 30, (s.y - t.pond.y * h) / 17)).toBeLessThan(2.2)
+        }
+      }
+    }
+  })
+})

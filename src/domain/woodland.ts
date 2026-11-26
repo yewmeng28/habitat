@@ -1,23 +1,7 @@
 import { areaDef, areaId, parseAreaId, type BiomeDef } from '../data/biomes'
+import { hash, mulberry32 } from './rng'
+import { areaTerrain, isBlocked } from './terrain'
 import type { PlantedTree, TreePosition } from './types'
-
-/** Small deterministic PRNG, so a tree's slot is reproducible from ids alone. */
-function mulberry32(seed: number) {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-function hash(str: string): number {
-  let h = 2166136261
-  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619)
-  return h >>> 0
-}
 
 /**
  * Picks the first area with room. Existing trees are never moved or removed;
@@ -34,32 +18,41 @@ export function assignArea(biome: BiomeDef, treesInBiome: PlantedTree[]): { area
 }
 
 /**
- * Slots are laid out on a square grid in normalised space. Positions are stored per tree and must be the same
- * on every device, so they can't depend on the viewport. The scene stretches them to a portrait or landscape
- * world of equal area, and a square grid spreads well in both.
- */
-const ASPECT = 1
-
-/**
- * Deterministic, well-spread position for the nth tree in an area:
- * a shuffled grid with a little jitter, kept inside a margin.
+ * Deterministic, well-spread position for the nth tree in an area.
+ * Candidate cells of a square grid in normalised space (device-independent, because positions are stored per tree)
+ * are filtered to those clear of the pond, stream and path, shuffled by the area id, and the nth is taken
+ * with a little jitter. The grid is refined until at least `capacity` clear cells exist.
  */
 export function slotPosition(id: string, index: number, capacity: number): TreePosition {
-  const cols = Math.max(1, Math.ceil(Math.sqrt(capacity * ASPECT)))
-  const rows = Math.max(1, Math.ceil(capacity / cols))
-  const cells = Array.from({ length: cols * rows }, (_, i) => i)
+  const terrain = areaTerrain(id)
+  let cells: { cx: number; cy: number; w: number; h: number }[] = []
+  for (let scale = 1.2; scale <= 3.2; scale += 0.2) {
+    const cols = Math.max(1, Math.ceil(Math.sqrt(capacity * scale)))
+    const rows = Math.max(1, Math.ceil((capacity * scale) / cols))
+    cells = []
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++) {
+        const cx = (c + 0.5) / cols
+        const cy = (r + 0.5) / rows
+        if (!isBlocked(terrain, cx, cy)) cells.push({ cx, cy, w: 1 / cols, h: 1 / rows })
+      }
+    if (cells.length >= capacity) break
+  }
   const rand = mulberry32(hash(id))
   for (let i = cells.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1))
     ;[cells[i], cells[j]] = [cells[j], cells[i]]
   }
   const cell = cells[index % cells.length]
-  const cx = ((cell % cols) + 0.5) / cols
-  const cy = (Math.floor(cell / cols) + 0.5) / rows
   const jr = mulberry32(hash(`${id}#${index}`))
-  const jitter = (n: number) => (jr() - 0.5) * 0.5 * n
   const clamp = (v: number) => Math.min(0.94, Math.max(0.06, v))
-  return { x: clamp(cx + jitter(1 / cols)), y: clamp(cy + jitter(1 / rows)) }
+  let x = clamp(cell.cx + (jr() - 0.5) * 0.5 * cell.w)
+  let y = clamp(cell.cy + (jr() - 0.5) * 0.5 * cell.h)
+  if (isBlocked(terrain, x, y)) {
+    x = cell.cx
+    y = cell.cy
+  }
+  return { x, y }
 }
 
 export function treesInArea(trees: PlantedTree[], id: string): PlantedTree[] {

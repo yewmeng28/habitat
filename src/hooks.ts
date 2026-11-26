@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { todayKey } from './domain/dates'
 import type {
   Challenge, ChallengeRecord, Discovery, FocusSession, Habit, HabitCompletion, LedgerEntry, PlantedTree,
@@ -61,3 +61,36 @@ export function useToday(): string {
   }, [])
   return today
 }
+
+/** Re-renders while `running`. Displayed time must always be computed from timestamps, never from ticks. */
+export function useNow(running: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!running) return
+    const tick = () => setNow(Date.now())
+    const id = window.setInterval(tick, 500)
+    document.addEventListener('visibilitychange', tick)
+    window.addEventListener('focus', tick)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+      window.removeEventListener('focus', tick)
+    }
+  }, [running])
+  return now
+}
+
+export function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(query)
+      mq.addEventListener('change', cb)
+      return () => mq.removeEventListener('change', cb)
+    },
+    () => window.matchMedia(query).matches,
+    () => false,
+  )
+}
+
+/** Matches the breakpoint where the layout switches from bottom navigation to the sidebar. */
+export const useIsPhone = () => useMediaQuery('(max-width: 767px)')
