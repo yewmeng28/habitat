@@ -107,6 +107,8 @@ export type Rule =
   | { type: 'area-trees'; n: number } // trees in a single area (density)
   | { type: 'species-discovered'; n: number } // distinct tree species unlocked
   | { type: 'habit-streak'; n: number } // best current habit streak
+  | { type: 'biomes-unlocked'; n: number } // biomes opened by total trees
+  | { type: 'rares-found'; n: number } // rare discoveries found
   | { type: 'all'; rules: Rule[] } // every sub-rule must hold: used for rare combination discoveries
 
 export type DiscoveryKind = 'species' | 'wildlife' | 'achievement' | 'biome' | 'rare'
@@ -121,4 +123,13 @@ export interface Discovery extends BaseRecord {
 export interface Preferences extends BaseRecord {
   // fixed id 'preferences'
   weekStartsOn: 0 | 1
+  // Display and sound options (see domain/preferences.ts). Optional so records saved before they existed still load.
+  dayNight?: 'auto' | 'day' | 'night'
+  seasons?: 'auto' | 'off' | 'spring' | 'summer' | 'autumn' | 'winter'
+  weather?: boolean
+  quality?: 'auto' | 'high' | 'low'
+  motion?: 'auto' | 'reduced' | 'full'
+  sound?: boolean
+  music?: boolean
+  volume?: number
 }

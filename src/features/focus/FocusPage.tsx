@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { TreePreview } from '../../components/TreePreview'
+import { useSoundscape } from '../../audio/useSoundscape'
 import { BIOMES, getBiome, isBiomeUnlocked, unlockedBiomes } from '../../data/biomes'
 import { SPECIES, getSpecies } from '../../data/species'
 import {
   MAX_MINUTES, MIN_MINUTES, PRESET_MINUTES, formatClock,
   progress, remainingMs, stageForProgress,
 } from '../../domain/focus'
+import { isNight, lighting } from '../../domain/daylight'
 import { fromDateKey, toDateKey, todayKey } from '../../domain/dates'
+import type { Display } from '../../domain/preferences'
 import type { FocusSession, PlantedTree } from '../../domain/types'
 import { computeStats, requirementText, ruleProgress } from '../../domain/progress'
 import { groundCanvas } from '../../game/pixel'
@@ -67,6 +70,7 @@ function useTreeScale(): number {
 
 interface RunningProps {
   session: FocusSession
+  display: Display
   error: string
   onPause: () => void
   onResume: () => void
@@ -75,8 +79,11 @@ interface RunningProps {
 }
 
 /** Whole-screen focus view: just the growing tree, the time and the controls. */
-function RunningSession({ session, error, onPause, onResume, onGiveUp, onMinimise }: RunningProps) {
+function RunningSession({ session, display, error, onPause, onResume, onGiveUp, onMinimise }: RunningProps) {
   const now = useNow(true)
+  const light = lighting(display.dayNight, new Date(now), getBiome(session.biomeId)?.lightFloor ?? 0)
+  // the biome's soundscape plays under the session if the player has turned sound or music on
+  useSoundscape({ active: session.status === 'active', biomeId: session.biomeId, night: isNight(light), sound: display.sound, music: display.music, volume: display.volume })
   const paused = session.status === 'paused'
   useWakeLock(!paused)
   const scale = useTreeScale()
@@ -158,6 +165,7 @@ export function FocusPage({ data, planted, onDismissPlanted, onMinimise }: Focus
     return (
       <RunningSession
         session={open}
+        display={data.display}
         error={error}
         onPause={() => run(() => pauseSession(open.id))}
         onResume={() => run(() => resumeSession(open.id))}

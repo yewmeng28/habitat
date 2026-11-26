@@ -12,6 +12,8 @@ export interface Stats {
   treesByBiome: Record<string, number>
   maxAreaTrees: number
   speciesUnlocked: number
+  biomesUnlocked: number
+  raresFound: number
   bestHabitStreak: number
 }
 
@@ -47,10 +49,13 @@ export function computeStats(i: StatsInput): Stats {
     treesByBiome,
     maxAreaTrees: Math.max(0, ...perArea.values()),
     speciesUnlocked: 0,
+    biomesUnlocked: BIOMES.filter((b) => i.trees.length >= b.unlockTrees).length,
+    raresFound: 0,
     bestHabitStreak,
   }
   // species-discovered depends on the other stats, so evaluate species rules without it first
   base.speciesUnlocked = SPECIES.filter((s) => ruleProgress(s.unlock, base).met).length
+  base.raresFound = RARE_DISCOVERIES.filter((r) => ruleProgress(r.unlock, base).met).length
   return base
 }
 
@@ -72,6 +77,8 @@ export function ruleProgress(rule: Rule, st: Stats): RuleProgress {
     case 'area-trees': return mk(st.maxAreaTrees, rule.n)
     case 'species-discovered': return mk(st.speciesUnlocked, rule.n)
     case 'habit-streak': return mk(st.bestHabitStreak, rule.n)
+    case 'biomes-unlocked': return mk(st.biomesUnlocked, rule.n)
+    case 'rares-found': return mk(st.raresFound, rule.n)
     case 'all': {
       // Progress adds up every part, so a combination shows one bar that fills as each piece is grown.
       const parts = rule.rules.map((r) => ruleProgress(r, st))
@@ -94,6 +101,8 @@ export function requirementText(rule: Rule): string {
     case 'area-trees': return `Grow ${rule.n} trees in one area`
     case 'species-discovered': return `Unlock ${rule.n} tree species`
     case 'habit-streak': return `Reach a ${rule.n}-day habit streak`
+    case 'biomes-unlocked': return `Unlock ${rule.n} biomes`
+    case 'rares-found': return `Discover ${rule.n} rare finds`
     case 'all': return rule.rules.map(requirementText).join(', and ')
   }
 }

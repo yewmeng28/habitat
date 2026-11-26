@@ -66,7 +66,10 @@ describe('discoveries', () => {
     const huge = computeStats({ ...input(60, 'birch', 3600), trees: Array.from({ length: 60 }, (_, i) => tree(i, ['oak', 'cherry-blossom', 'birch'][i % 3])) })
     huge.treesByBiome = { tundra: 20, savannah: 20, marsh: 20, skybound: 20, fairy: 20 }
     huge.treesBySpecies = { ...huge.treesBySpecies, cloudwood: 5, 'crystal-spire': 5, 'luminous-oak': 5 }
-    huge.bestHabitStreak = 7 // streaks come from habits, covered in habits.test.ts
+    huge.trees = 150
+    huge.biomesUnlocked = 6
+    huge.raresFound = 4
+    huge.bestHabitStreak = 30 // streaks come from habits, covered in habits.test.ts
     for (const d of [...SPECIES, ...WILDLIFE, ...ACHIEVEMENTS, ...RARE_DISCOVERIES]) expect(ruleProgress(d.unlock, huge).met, d.id).toBe(true)
   })
 })

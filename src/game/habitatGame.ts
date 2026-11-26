@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { AmbientEffect, AreaTheme } from '../data/biomes'
+import type { Season } from '../domain/season'
 import type { GrowthStage } from '../domain/types'
 import { areaTerrain, type Terrain } from '../domain/terrain'
 import { dryPoint, hopTarget, shoreTarget, walkTarget } from '../domain/wildlifeMove'
@@ -20,12 +21,15 @@ export interface WildlifeView {
   id: string
   behaviour: Behaviour
   count: number
+  /** Hours it keeps: omitted means any time. Day creatures sleep at night and night creatures only come out then. */
+  activity?: 'day' | 'night'
 }
 
 export interface AreaView {
   key: string // unique per area, also used to seed its terrain
   biomeId: string
-  effect: AmbientEffect // weather drifting over the scene: motes, snow, dust or fog
+  effect: AmbientEffect // weather drifting over the scene: motes, snow, dust, fog, leaves...
+  season: Season // changes the woodland's foliage and ground
   theme: AreaTheme
   shape: WorldShape // chosen from the viewport; tree positions are fractions so they work in either
   seed: number
@@ -34,8 +38,21 @@ export interface AreaView {
   wildlife: WildlifeView[]
 }
 
+/** Global look and feel, independent of which area is shown. */
+export interface SceneSettings {
+  darkness: number // 0 day .. 1 night
+  warmth: number // dawn/dusk glow
+  calm: boolean // reduced motion: nothing drifts, falls or wanders
+  low: boolean // lower quality: fewer particles
+  weather: boolean
+}
+
 export interface HabitatGameApi {
   setArea(area: AreaView): void
+  setSettings(settings: SceneSettings): void
+  /** Keyboard control: pan by a fraction of the view, and zoom by a factor. */
+  pan(dx: number, dy: number): void
+  zoom(factor: number): void
   destroy(): void
 }
 
@@ -57,6 +74,7 @@ interface Critter {
   flap: number
   phase: number
   angle: number // position around the pond, for shore animals
+  activity?: 'day' | 'night'
   id: string
   frame: string // current texture frame, so we only swap when it changes
 }
@@ -75,6 +93,9 @@ class WoodlandScene extends Phaser.Scene {
   private highlight: Phaser.GameObjects.GameObject[] = []
   private selectedId: string | null = null
   private currentKey = ''
+  private settings: SceneSettings = { darkness: 0, warmth: 0, calm: false, low: false, weather: true }
+  private shade?: Phaser.GameObjects.Graphics
+  private areaView: AreaView | null = null
   private world: WorldSize = worldSize('landscape')
   private terrain: Terrain = areaTerrain('woodland:0')
   private ambient: Phaser.GameObjects.GameObject[] = []
@@ -95,6 +116,7 @@ class WoodlandScene extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor('#2a3a24')
+    this.shade = this.add.graphics().setDepth(88000) // day/night tint, above the world and below the glowing specks
     this.input.addPointer(1)
     this.scale.on('resize', () => this.fit(false))
     this.input.on('pointerdown', () => (this.dragged = false))
@@ -110,6 +132,35 @@ class WoodlandScene extends Phaser.Scene {
     else this.applyArea(area)
   }
 
+  setSettings(next: SceneSettings) {
+    const prev = this.settings
+    this.settings = next
+    this.redrawShade()
+    // weather, calm and quality change what is built, so rebuild the ambient layer and the creatures
+    if (this.ready && this.areaView && (prev.weather !== next.weather || prev.calm !== next.calm || prev.low !== next.low)) {
+      this.buildAmbient(this.areaView.seed, this.areaView.effect)
+      this.spawnWildlife(this.areaView.wildlife)
+    }
+  }
+
+  private redrawShade() {
+    if (!this.shade) return
+    const { darkness, warmth } = this.settings
+    this.shade.clear()
+    if (darkness > 0.01) this.shade.fillStyle(0x0a1038, darkness * 0.46).fillRect(0, 0, this.world.w, this.world.h)
+    if (warmth > 0.01) this.shade.fillStyle(0xff9a4a, warmth * 0.16).fillRect(0, 0, this.world.w, this.world.h)
+  }
+
+  panBy(dx: number, dy: number) {
+    const cam = this.cameras.main
+    cam.scrollX += (dx * cam.width) / cam.zoom
+    cam.scrollY += (dy * cam.height) / cam.zoom
+  }
+
+  zoomStep(f: number) {
+    this.zoomBy(f)
+  }
+
   private texture(key: string, make: () => HTMLCanvasElement) {
     if (!this.textures.exists(key)) {
       const t = this.textures.addCanvas(key, make())
@@ -119,7 +170,8 @@ class WoodlandScene extends Phaser.Scene {
   }
 
   private applyArea(area: AreaView) {
-    const viewKey = `${area.key}|${area.shape}`
+    const viewKey = `${area.key}|${area.shape}|${area.season}`
+    this.areaView = area
     const changedArea = viewKey !== this.currentKey
     this.currentKey = viewKey
     if (changedArea) {
@@ -129,19 +181,20 @@ class WoodlandScene extends Phaser.Scene {
 
     if (changedArea) {
       this.ground?.destroy()
-      const key = this.texture(`ground:${viewKey}`, () => groundCanvas(area.key, area.theme, area.palette, area.shape, area.biomeId))
+      const key = this.texture(`ground:${viewKey}`, () => groundCanvas(area.key, area.theme, area.palette, area.shape, area.biomeId, area.season))
       this.ground = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-1)
       this.treeSprites.forEach((s) => s.destroy())
       this.treeSprites.clear()
       this.selectTree(null)
       this.buildAmbient(area.seed, area.effect)
+      this.redrawShade()
       this.fit(true)
     }
 
     const seen = new Set<string>()
     for (const t of area.trees) {
       seen.add(t.id)
-      const key = this.texture(`tree:${t.speciesId}:${t.stage}`, () => treeCanvas(t.speciesId, t.stage))
+      const key = this.texture(`tree:${t.speciesId}:${t.stage}:${area.season}`, () => treeCanvas(t.speciesId, t.stage, area.season))
       const x = Math.round(MARGIN + t.x * (this.world.w - 2 * MARGIN))
       const y = Math.round(MARGIN + 12 + t.y * (this.world.h - 2 * MARGIN - 12))
       let s = this.treeSprites.get(t.id)
@@ -190,7 +243,7 @@ class WoodlandScene extends Phaser.Scene {
           : { ...dryPoint(this.terrain, this.world.w, this.world.h), angle: ang }
         const { x, y } = start
         const s = this.add.image(Math.round(x), Math.round(y), key).setOrigin(0.5, 1).setDepth(y)
-        this.critters.push({ s, behaviour: w.behaviour, wait: Math.random() * 2000, t: 0, dur: 0, x0: x, y0: y, x1: x, y1: y, arc: 0, flap: 0, phase: Math.random() * 6, angle: start.angle, id: w.id, frame: 'idle' })
+        this.critters.push({ s, behaviour: w.behaviour, wait: Math.random() * 2000, t: 0, dur: 0, x0: x, y0: y, x1: x, y1: y, arc: 0, flap: 0, phase: Math.random() * 6, angle: start.angle, id: w.id, frame: 'idle', activity: w.activity })
       }
     }
   }
@@ -271,6 +324,15 @@ class WoodlandScene extends Phaser.Scene {
   }
 
   private stepCritter(c: Critter, dt: number) {
+    // day creatures sleep at night, night creatures only come out then
+    const night = this.settings.darkness >= 0.55
+    const awake = c.activity === undefined || (c.activity === 'night' ? night : !night)
+    c.s.setVisible(awake)
+    if (!awake) return
+    if (this.settings.calm) {
+      this.animate(c, dt, false) // reduced motion: creatures stay where they are
+      return
+    }
     if (c.wait > 0) {
       c.wait -= dt
       this.animate(c, dt, false)
@@ -307,22 +369,26 @@ class WoodlandScene extends Phaser.Scene {
     })
   }
 
-  /** Weather and light for the biome. Everything created here is tracked in `ambient` and cleared on the next area. */
+  /** Weather for the biome and season. Everything created here is tracked in `ambient` and cleared on the next build. */
   private buildAmbient(seed: number, effect: AmbientEffect) {
     this.ambient.forEach((o) => {
       this.tweens.killTweensOf(o)
       o.destroy()
     })
     this.ambient = []
+    // weather off, or reduced motion: nothing drifts or falls at all
+    if (!this.settings.weather || this.settings.calm) return
+    const k = this.settings.low ? 0.4 : 1 // lower quality uses far fewer particles
+    const n = (count: number) => Math.max(1, Math.round(count * k))
     const { w: W, h: H } = this.world
-    const rnd = (n: number) => ((Math.sin(seed + n * 12.9898) * 43758.5453) % 1 + 1) % 1
+    const rnd = (i: number) => ((Math.sin(seed + i * 12.9898) * 43758.5453) % 1 + 1) % 1
     // effects stay over the terrain, never in the margin around it
     const clip = this.make.graphics({}, false)
     clip.fillRect(0, 0, W, H)
     const mask = clip.createGeometryMask()
     this.ambient.push(clip)
 
-    // dithered, drifting shapes: cloud shadows (woodland, savannah) or mist banks (marsh)
+    // dithered, drifting shapes: cloud shadows (woodland, savannah), clouds, or mist banks
     const drifting = (key: string, w: number, h: number, color: string, count: number, alpha: number, depth: number) => {
       const tex = this.canvasTexture(key, w, h, (g) => {
         g.fillStyle = color
@@ -333,7 +399,7 @@ class WoodlandScene extends Phaser.Scene {
             if (dx * dx + dy * dy < 1 && (x + y) % 2 === 0) g.fillRect(x, y, 1, 1)
           }
       })
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < n(count); i++) {
         const img = this.add.image(-80 + rnd(i) * W, 30 + rnd(i + 5) * (H - 60), tex).setAlpha(alpha).setDepth(depth).setScale(1.5 + rnd(i + 9))
         img.setMask(mask)
         this.tweens.add({ targets: img, x: W + 90, duration: 70000 + i * 15000, repeat: -1, delay: -rnd(i) * 40000 })
@@ -341,16 +407,36 @@ class WoodlandScene extends Phaser.Scene {
       }
     }
 
-    // small specks that rise, sway and fade in and out (pollen, fireflies)
+    // small specks that rise, sway and fade in and out (pollen, fireflies, fairy lights); brighter against a dark sky
+    const glowBoost = 0.7 + this.settings.darkness * 0.3
     const specks = (key: string, color: string, count: number, peak: number, off = 0) => {
       const tex = this.canvasTexture(key, 2, 2, (g) => {
         g.fillStyle = color
         g.fillRect(0, 0, 2, 2)
       })
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < n(count); i++) {
         const m = this.add.image(rnd(i + 20 + off) * W, rnd(i + 40 + off) * H, tex).setDepth(89000).setAlpha(0.2)
-        this.tweens.add({ targets: m, y: m.y - 14 - rnd(i + off) * 12, x: m.x + (rnd(i + 3 + off) - 0.5) * 24, alpha: peak, duration: 2600 + rnd(i + 7 + off) * 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd(i + 11 + off) * 3000 })
+        this.tweens.add({ targets: m, y: m.y - 14 - rnd(i + off) * 12, x: m.x + (rnd(i + 3 + off) - 0.5) * 24, alpha: Math.min(1, peak * glowBoost), duration: 2600 + rnd(i + 7 + off) * 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd(i + 11 + off) * 3000 })
         this.ambient.push(m)
+      }
+    }
+
+    // things that fall and sway: snow, autumn leaves, spring petals
+    const faller = (key: string, colors: string[], count: number, durMin: number, durRange: number, size: number) => {
+      const textures = colors.map((c, i) => this.canvasTexture(`${key}${i}`, size, size, (g) => {
+        g.fillStyle = c
+        g.fillRect(0, 0, size, size)
+      }))
+      for (let i = 0; i < n(count); i++) {
+        const dur = durMin + rnd(i + 6) * durRange
+        const f = this.add.image(rnd(i + 20) * W, rnd(i + 40) * H, textures[i % textures.length]).setDepth(91000).setAlpha(0.9)
+        // finish the first fall from where the piece starts, then loop from the top
+        this.tweens.add({
+          targets: f, y: H + 6, duration: dur * (1 - f.y / H),
+          onComplete: () => f.active && this.tweens.add({ targets: f, y: { from: -6, to: H + 6 }, duration: dur, repeat: -1 }),
+        })
+        this.tweens.add({ targets: f, x: f.x + 6 + rnd(i) * 8, duration: 1800 + rnd(i + 9) * 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+        this.ambient.push(f)
       }
     }
 
@@ -359,38 +445,25 @@ class WoodlandScene extends Phaser.Scene {
       specks('mote', '#f6f0a8', 14, 0.9)
     } else if (effect === 'dust') {
       drifting('heat-shadow', 64, 32, '#6a4a1a', 3, 0.14, 90000)
-      // dust and seed fluff blown steadily across the plains
       const tex = this.canvasTexture('dust', 3, 1, (g) => {
         g.fillStyle = '#efdca4'
         g.fillRect(0, 0, 3, 1)
       })
-      for (let i = 0; i < 18; i++) {
+      for (let i = 0; i < n(18); i++) {
         const d = this.add.image(rnd(i + 30) * W, rnd(i + 50) * H, tex).setDepth(89000).setAlpha(0.6)
         this.tweens.add({ targets: d, x: W + 10, y: d.y + (rnd(i + 2) - 0.5) * 18, duration: 9000 + rnd(i + 4) * 8000, repeat: -1, delay: -rnd(i) * 9000 })
         this.ambient.push(d)
       }
     } else if (effect === 'snow') {
-      const tex = this.canvasTexture('flake', 2, 2, (g) => {
-        g.fillStyle = '#ffffff'
-        g.fillRect(0, 0, 2, 2)
-      })
-      for (let i = 0; i < 46; i++) {
-        const dur = 7000 + rnd(i + 6) * 6000
-        const f = this.add.image(rnd(i + 20) * W, rnd(i + 40) * H, tex).setDepth(91000).setAlpha(0.9)
-        // finish the first fall from where the flake starts, then loop from the top
-        this.tweens.add({
-          targets: f, y: H + 6, duration: dur * (1 - f.y / H),
-          onComplete: () => f.active && this.tweens.add({ targets: f, y: { from: -6, to: H + 6 }, duration: dur, repeat: -1 }),
-        })
-        this.tweens.add({ targets: f, x: f.x + 6 + rnd(i) * 8, duration: 1800 + rnd(i + 9) * 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
-        this.ambient.push(f)
-      }
+      faller('flake', ['#ffffff'], 46, 7000, 6000, 2)
+    } else if (effect === 'leaves') {
+      faller('leaf', ['#d9a82e', '#c9652e', '#a8402a'], 22, 8000, 7000, 3)
+    } else if (effect === 'petals') {
+      faller('petal', ['#ffd1e0', '#f08fb2'], 26, 9000, 7000, 2)
     } else if (effect === 'clouds') {
-      // cloud wisps sliding across the island, with the odd glint of sun
       drifting('sky-cloud', 64, 32, '#ffffff', 4, 0.5, 90500)
       specks('sky-glint', '#ffffff', 10, 0.9)
     } else if (effect === 'sparkles') {
-      // a faint violet haze and drifting points of cyan, pink and gold light
       drifting('spirit-haze', 96, 40, '#7a6ad0', 3, 0.14, 90500)
       specks('spark-cyan', '#7ff0ff', 9, 1)
       specks('spark-pink', '#ff8ad8', 9, 1, 100)
@@ -515,6 +588,9 @@ export function createHabitatGame(parent: HTMLElement, opts: Options): HabitatGa
   })
   return {
     setArea: (area) => scene.setArea(area),
+    setSettings: (settings) => scene.setSettings(settings),
+    pan: (dx, dy) => scene.panBy(dx, dy),
+    zoom: (factor) => scene.zoomStep(factor),
     destroy: () => game.destroy(true),
   }
 }

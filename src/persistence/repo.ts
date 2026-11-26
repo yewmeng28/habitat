@@ -182,3 +182,9 @@ export async function getPreferences(): Promise<Preferences> {
   await db.preferences.put(row)
   return row
 }
+
+/** Saves display and sound options (and any other preference). Creates the record on first use. */
+export async function updatePreferences(patch: Partial<Omit<Preferences, keyof BaseRecord | 'weekStartsOn'>>): Promise<void> {
+  const current = await getPreferences()
+  await db.preferences.put({ ...current, ...patch, updatedAt: now() })
+}

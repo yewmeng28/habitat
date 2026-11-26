@@ -4,7 +4,7 @@ import { isValidDateKey } from '../domain/dates'
 import { db } from './db'
 
 export const BACKUP_FORMAT = 'habitat-backup'
-export const BACKUP_VERSION = 3
+export const BACKUP_VERSION = 4
 
 const base = {
   id: z.string().min(1),
@@ -85,7 +85,18 @@ const discovery = z.object({
   itemId: z.string().min(1),
   points: z.number().min(0),
 })
-const preferences = z.object({ ...base, weekStartsOn: z.union([z.literal(0), z.literal(1)]) })
+const preferences = z.object({
+  ...base,
+  weekStartsOn: z.union([z.literal(0), z.literal(1)]),
+  dayNight: z.enum(['auto', 'day', 'night']).optional(),
+  seasons: z.enum(['auto', 'off', 'spring', 'summer', 'autumn', 'winter']).optional(),
+  weather: z.boolean().optional(),
+  quality: z.enum(['auto', 'high', 'low']).optional(),
+  motion: z.enum(['auto', 'reduced', 'full']).optional(),
+  sound: z.boolean().optional(),
+  music: z.boolean().optional(),
+  volume: z.number().min(0).max(1).optional(),
+})
 
 export const backupSchema = z.object({
   format: z.literal(BACKUP_FORMAT),

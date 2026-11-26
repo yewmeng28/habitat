@@ -378,3 +378,16 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .seg.wide button { flex: 1 1 30%; }
 .medal.rare { background: #b890f0; border-color: #7a5ab8; }
 .medal.rare.off { background: var(--line); border-color: var(--line); }
+
+/* ---------- Accessibility and settings ---------- */
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 14px; border-radius: 10px; background: var(--green); color: #fff; text-decoration: none; font-weight: 600; }
+.skip-link:focus { top: calc(env(safe-area-inset-top) + 8px); }
+.main:focus { outline: none; }
+.game-frame:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.setting { display: flex; flex-direction: column; gap: 4px; font-size: .95rem; }
+.setting.check-row { flex-direction: row; align-items: flex-start; }
+.setting input[type='range'] { padding: 0; min-height: 32px; accent-color: var(--green); }
+/* The system asks for less motion: stop decorative animation and transitions everywhere in the interface */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

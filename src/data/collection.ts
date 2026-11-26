@@ -9,16 +9,18 @@ export interface WildlifeDef {
   rarity: 'common' | 'uncommon' | 'rare'
   /** How it moves in the habitat scene. `shore` animals (frogs, herons) stay around the water; `hop` and `walk` animals avoid it; `glide` animals drift slowly across the sky. */
   behaviour: 'flutter' | 'hop' | 'perch' | 'shore' | 'walk' | 'glide'
+  /** Hours it keeps. Omitted means any time. Day creatures sleep at night; night creatures only appear then. */
+  activity?: 'day' | 'night'
 }
 
 /** Wildlife is attracted by what the user has grown. Kept deliberately simple for the first release. */
 export const WILDLIFE: WildlifeDef[] = [
-  { id: 'songbird', name: 'Songbird', description: 'Drawn to your first tree. It hops between branches.', biome: 'woodland', unlock: { type: 'trees', n: 1 }, rarity: 'common', behaviour: 'perch' },
-  { id: 'butterfly', name: 'Meadow Butterfly', description: 'Follows the wildflowers of a growing clearing.', biome: 'woodland', unlock: { type: 'trees', n: 3 }, rarity: 'common', behaviour: 'flutter' },
-  { id: 'squirrel', name: 'Red Squirrel', description: 'Moves in once oaks start to cluster.', biome: 'woodland', unlock: { type: 'species-trees', speciesId: 'oak', n: 3 }, rarity: 'common', behaviour: 'hop' },
+  { id: 'songbird', name: 'Songbird', description: 'Drawn to your first tree. It hops between branches.', biome: 'woodland', unlock: { type: 'trees', n: 1 }, rarity: 'common', behaviour: 'perch', activity: 'day' },
+  { id: 'butterfly', name: 'Meadow Butterfly', description: 'Follows the wildflowers of a growing clearing.', biome: 'woodland', unlock: { type: 'trees', n: 3 }, rarity: 'common', behaviour: 'flutter', activity: 'day' },
+  { id: 'squirrel', name: 'Red Squirrel', description: 'Moves in once oaks start to cluster.', biome: 'woodland', unlock: { type: 'species-trees', speciesId: 'oak', n: 3 }, rarity: 'common', behaviour: 'hop', activity: 'day' },
   { id: 'rabbit', name: 'Field Rabbit', description: 'Shelters in a woodland that is getting dense.', biome: 'woodland', unlock: { type: 'area-trees', n: 8 }, rarity: 'uncommon', behaviour: 'hop' },
   { id: 'frog', name: 'Pond Frog', description: 'Arrives when an area is lush enough to feed it.', biome: 'woodland', unlock: { type: 'area-trees', n: 12 }, rarity: 'uncommon', behaviour: 'shore' },
-  { id: 'blossom-butterfly', name: 'Blossom Butterfly', description: 'A rare pink butterfly that only visits a true blossom garden.', biome: 'woodland', unlock: { type: 'species-trees', speciesId: 'cherry-blossom', n: 3 }, rarity: 'rare', behaviour: 'flutter' },
+  { id: 'blossom-butterfly', name: 'Blossom Butterfly', description: 'A rare pink butterfly that only visits a true blossom garden.', biome: 'woodland', unlock: { type: 'species-trees', speciesId: 'cherry-blossom', n: 3 }, rarity: 'rare', behaviour: 'flutter', activity: 'day' },
   // Frozen Tundra
   { id: 'snow-hare', name: 'Snow Hare', description: 'A white hare that freezes still when watched.', biome: 'tundra', unlock: { type: 'biome-trees', biomeId: 'tundra', n: 1 }, rarity: 'common', behaviour: 'hop' },
   { id: 'arctic-fox', name: 'Arctic Fox', description: 'Trots the snowfields on silent, furred paws.', biome: 'tundra', unlock: { type: 'biome-trees', biomeId: 'tundra', n: 5 }, rarity: 'uncommon', behaviour: 'walk' },
@@ -30,14 +32,14 @@ export const WILDLIFE: WildlifeDef[] = [
   // Whispering Marsh
   { id: 'marsh-frog', name: 'Marsh Frog', description: 'Calls from the reeds as dusk settles.', biome: 'marsh', unlock: { type: 'biome-trees', biomeId: 'marsh', n: 1 }, rarity: 'common', behaviour: 'shore' },
   { id: 'heron', name: 'Grey Heron', description: 'Stands motionless in the shallows, waiting.', biome: 'marsh', unlock: { type: 'biome-trees', biomeId: 'marsh', n: 6 }, rarity: 'uncommon', behaviour: 'shore' },
-  { id: 'firefly', name: 'Firefly', description: 'Tiny lights that gather when the marsh is thriving.', biome: 'marsh', unlock: { type: 'biome-trees', biomeId: 'marsh', n: 12 }, rarity: 'rare', behaviour: 'flutter' },
+  { id: 'firefly', name: 'Firefly', description: 'Tiny lights that gather when the marsh is thriving.', biome: 'marsh', unlock: { type: 'biome-trees', biomeId: 'marsh', n: 12 }, rarity: 'rare', behaviour: 'flutter', activity: 'night' },
   // Skybound Peaks
-  { id: 'aurora-finch', name: 'Aurora Finch', description: 'A tiny bird whose feathers shift colour like the northern lights.', biome: 'skybound', unlock: { type: 'biome-trees', biomeId: 'skybound', n: 1 }, rarity: 'common', behaviour: 'perch' },
+  { id: 'aurora-finch', name: 'Aurora Finch', description: 'A tiny bird whose feathers shift colour like the northern lights.', biome: 'skybound', unlock: { type: 'biome-trees', biomeId: 'skybound', n: 1 }, rarity: 'common', behaviour: 'perch', activity: 'day' },
   { id: 'peak-goat', name: 'Peak Goat', description: 'Sure-footed on any ledge, however narrow.', biome: 'skybound', unlock: { type: 'biome-trees', biomeId: 'skybound', n: 6 }, rarity: 'uncommon', behaviour: 'walk' },
   { id: 'cloud-ray', name: 'Cloud Ray', description: 'A vast, gentle glider that swims through the thin air.', biome: 'skybound', unlock: { type: 'biome-trees', biomeId: 'skybound', n: 12 }, rarity: 'rare', behaviour: 'glide' },
   // Enchanted Fairy Forest
   { id: 'pixie', name: 'Pixie', description: 'A small, curious light with wings and an opinion.', biome: 'fairy', unlock: { type: 'biome-trees', biomeId: 'fairy', n: 1 }, rarity: 'uncommon', behaviour: 'flutter' },
-  { id: 'luna-moth', name: 'Luna Moth', description: 'Pale wings that glow faintly in the dark.', biome: 'fairy', unlock: { type: 'biome-trees', biomeId: 'fairy', n: 6 }, rarity: 'rare', behaviour: 'flutter' },
+  { id: 'luna-moth', name: 'Luna Moth', description: 'Pale wings that glow faintly in the dark.', biome: 'fairy', unlock: { type: 'biome-trees', biomeId: 'fairy', n: 6 }, rarity: 'rare', behaviour: 'flutter', activity: 'night' },
   { id: 'spirit-stag', name: 'Spirit Stag', description: 'A shining stag that appears only in a flourishing forest.', biome: 'fairy', unlock: { type: 'biome-trees', biomeId: 'fairy', n: 12 }, rarity: 'rare', behaviour: 'walk' },
 ]
 
@@ -63,6 +65,11 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'marsh-explorer', name: 'Misty Footsteps', description: 'Plant your first tree in the Whispering Marsh.', unlock: { type: 'biome-trees', biomeId: 'marsh', n: 1 } },
   { id: 'skybound-explorer', name: 'Above the Clouds', description: 'Plant your first tree in the Skybound Peaks.', unlock: { type: 'biome-trees', biomeId: 'skybound', n: 1 } },
   { id: 'fairy-explorer', name: 'Into the Glow', description: 'Plant your first tree in the Enchanted Fairy Forest.', unlock: { type: 'biome-trees', biomeId: 'fairy', n: 1 } },
+  { id: 'forty-hours', name: 'Deep Roots', description: 'Focus for 40 hours in total.', unlock: { type: 'hours', n: 40 } },
+  { id: 'streak-30', name: 'A Month of Growth', description: 'Reach a 30-day habit streak.', unlock: { type: 'habit-streak', n: 30 } },
+  { id: 'hundred-trees', name: 'Centennial Grove', description: 'Plant 100 trees.', unlock: { type: 'trees', n: 100 } },
+  { id: 'rare-collector', name: 'Treasure Hunter', description: 'Discover 3 rare finds.', unlock: { type: 'rares-found', n: 3 } },
+  { id: 'world-traveller', name: 'World Traveller', description: 'Unlock every biome.', unlock: { type: 'biomes-unlocked', n: 6 } },
   { id: 'fifty-trees', name: 'Ancient Woodland', description: 'Plant 50 trees.', unlock: { type: 'trees', n: 50 } },
 ]
 

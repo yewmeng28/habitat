@@ -32,4 +32,4 @@ Notes:
 
 ## Status
 
-Phases 1 to 3 (habit tracker, focus and tree planting, collection and wildlife), Phase 5 (Frozen Tundra, Golden Savannah and Whispering Marsh with biome unlocking and a world overview) and Phase 6 (the fantasy biomes: floating Skybound Peaks and the Enchanted Fairy Forest, with rare discoveries) are implemented. Phase 4 (cloud sync) is deferred.
+Phases 1 to 3 (habit tracker, focus and tree planting, collection and wildlife), Phase 5 (Frozen Tundra, Golden Savannah and Whispering Marsh with biome unlocking and a world overview) Phase 6 (the fantasy biomes: floating Skybound Peaks and the Enchanted Fairy Forest, with rare discoveries) and Phase 7 (day and night, seasons, generated sound and music, accessibility and performance options, more achievements and insights) are implemented. Phase 4 (cloud sync) is deferred.

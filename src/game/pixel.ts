@@ -1,3 +1,4 @@
+import { DECIDUOUS, isLeafy, seasonalGrass, seasonalLeaf, type Season } from '../domain/season'
 import type { GrowthStage } from '../domain/types'
 
 /**
@@ -1009,7 +1010,7 @@ export const wildlifeCanvas = (id: string): HTMLCanvasElement => wildlifeFrames(
 
 const cache = new Map<string, HTMLCanvasElement>()
 
-export function treeCanvas(speciesId: string, stage: GrowthStage): HTMLCanvasElement {
+function baseTree(speciesId: string, stage: GrowthStage): HTMLCanvasElement {
   const key = `${speciesId}:${stage}`
   const hit = cache.get(key)
   if (hit) return hit
@@ -1020,6 +1021,45 @@ export function treeCanvas(speciesId: string, stage: GrowthStage): HTMLCanvasEle
   else sp.draw(ctx, SCALE[stage])
   cache.set(key, canvas)
   return canvas
+}
+
+/**
+ * A tree sprite, optionally dressed for the season. Only the woodland's broadleaf species change (autumn colour,
+ * winter frost, fresh spring green); evergreens and fantasy trees look the same all year.
+ */
+export function treeCanvas(speciesId: string, stage: GrowthStage, season: Season = 'summer'): HTMLCanvasElement {
+  const base = baseTree(speciesId, stage)
+  if (season === 'summer' || !DECIDUOUS.has(speciesId) || stage === 'seed') return base
+  const key = `${speciesId}:${stage}:${season}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const [out, ctx] = makeCanvas(SPRITE_W, SPRITE_H)
+  const img = base.getContext('2d')!.getImageData(0, 0, SPRITE_W, SPRITE_H)
+  const d = img.data
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue
+    const rgb: [number, number, number] = [d[i], d[i + 1], d[i + 2]]
+    let next: [number, number, number] | null = null
+    if (speciesId === 'cherry-blossom' && d[i] > 200 && d[i] > d[i + 1] + 30 && d[i + 2] > 120) {
+      // pink blossom: turns amber in autumn and frosts over in winter
+      if (season === 'autumn') next = [rgb[0], Math.round(rgb[1] * 0.74 + 24), Math.round(rgb[2] * 0.34)]
+      else if (season === 'winter') next = seasonalLeaf([rgb[0], rgb[1] + 90, rgb[2] + 40], 'winter')
+    } else if (speciesId === 'maple' && season === 'winter' && d[i] > d[i + 1] + 30 && d[i] > d[i + 2] + 30) {
+      next = seasonalLeaf(rgb, 'winter') // the maple's red leaves frost over too
+    } else if (isLeafy(rgb)) {
+      // autumn colour varies in small patches (not per pixel, which would stripe the crown)
+      const p = i >> 2
+      next = seasonalLeaf(rgb, season, ((p % SPRITE_W) >> 2) * 2 + (Math.floor(p / SPRITE_W) >> 2) * 3)
+    }
+    if (next) {
+      d[i] = next[0]
+      d[i + 1] = next[1]
+      d[i + 2] = next[2]
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+  cache.set(key, out)
+  return out
 }
 
 export const hasSpeciesSprite = (id: string) => id in SPECIES
@@ -1318,6 +1358,7 @@ export function groundCanvas(
   palette: { grass: string[]; path: string },
   shape: WorldShape = 'landscape',
   biomeId = 'woodland',
+  season: Season = 'summer',
 ): HTMLCanvasElement {
   const { w: W, h: H, tilesW, tilesH } = worldSize(shape)
   const [canvas, ctx] = makeCanvas(W, H)
@@ -1327,7 +1368,9 @@ export function groundCanvas(
   const look = LOOK[kind]
   const t: Terrain = areaTerrain(areaKey)
   const rand = mulberry(hashString(`${areaKey}#ground`))
-  const grass = palette.grass.map((g) => shift(g, style.tint))
+  // only the woodland follows the seasons; every other biome keeps its own constant climate
+  const seasonal = biome.id === 'woodland' ? season : 'summer'
+  const grass = palette.grass.map((g) => shift(seasonalGrass(g, seasonal), style.tint))
   const blade: [string, string] = [shift(look.blade[0], style.tint), look.blade[1]]
   const extra = style.extra ?? {}
   const snow = look.snow
@@ -1469,7 +1512,7 @@ export function groundCanvas(
   scatter(style.rings, (cx, cy) => {
     for (let a = 0; a < 7; a++) drawMushroom(ctx, Math.round(cx + Math.cos((a / 7) * Math.PI * 2) * 9), Math.round(cy + Math.sin((a / 7) * Math.PI * 2) * 5))
   })
-  scatter(extra.drift, (x, y) => drawDrift(ctx, x, y, 5 + Math.floor(rand() * 5)))
+  scatter((extra.drift ?? 0) + (seasonal === 'winter' ? 9 : 0), (x, y) => drawDrift(ctx, x, y, 5 + Math.floor(rand() * 5))) // winter snow banks in the woodland
   scatter(extra.mound, (x, y) => drawMound(ctx, x, y))
   scatter(extra.thorn, (x, y) => drawThorn(ctx, x, y))
   scatter(extra.twigs, (x, y) => drawTwigs(ctx, x, y))

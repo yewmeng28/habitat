@@ -16,7 +16,7 @@ export interface AreaDef {
 /** What the main body of water is, which changes how it is drawn and what the creatures do around it. */
 export type WaterStyle = 'pond' | 'ice' | 'waterhole' | 'marsh' | 'sky' | 'spirit'
 /** Ambient effect drifting over the scene. */
-export type AmbientEffect = 'motes' | 'snow' | 'dust' | 'fog' | 'clouds' | 'sparkles'
+export type AmbientEffect = 'motes' | 'snow' | 'dust' | 'fog' | 'clouds' | 'sparkles' | 'leaves' | 'petals'
 
 export interface BiomeDef {
   id: string
@@ -37,6 +37,8 @@ export interface BiomeDef {
     floating?: boolean
   }
   effect: AmbientEffect
+  /** The darkest this biome ever gets at night (0 to 1). Magical places never go fully dark. */
+  lightFloor?: number
 }
 
 export const BIOMES: BiomeDef[] = [
@@ -101,6 +103,7 @@ export const BIOMES: BiomeDef[] = [
     palette: { grass: ['#3f5a38', '#46633f', '#3a5233', '#4c6b44'], path: '#6b5a3a', accent: '#b8f0a0' },
     terrain: { pondRx: 42, pondRy: 24, streamChance: 0.8, water: 'marsh' },
     effect: 'fog',
+    lightFloor: 0.12,
   },
   {
     id: 'skybound',
@@ -131,6 +134,7 @@ export const BIOMES: BiomeDef[] = [
     palette: { grass: ['#2f4a5e', '#365468', '#2b4256', '#3c5f74'], path: '#6a5a8a', accent: '#ffe08a' },
     terrain: { pondRx: 34, pondRy: 19, streamChance: 0.6, water: 'spirit' },
     effect: 'sparkles',
+    lightFloor: 0.32,
   },
 ]
 

@@ -4,6 +4,7 @@ import { todayKey } from './domain/dates'
 import type {
   Challenge, ChallengeRecord, Discovery, FocusSession, Habit, HabitCompletion, LedgerEntry, PlantedTree,
 } from './domain/types'
+import { resolveDisplay, type Display } from './domain/preferences'
 import { db } from './persistence/db'
 
 export interface AppData {
@@ -16,6 +17,7 @@ export interface AppData {
   plantedTrees: PlantedTree[]
   discoveries: Discovery[]
   weekStartsOn: 0 | 1
+  display: Display
 }
 
 /** Live view of all local data; re-renders whenever IndexedDB changes. undefined while loading. */
@@ -43,6 +45,7 @@ export function useAppData(): AppData | undefined {
       plantedTrees: plantedTrees.filter(live),
       discoveries: discoveries.filter(live),
       weekStartsOn: prefs?.weekStartsOn ?? 1,
+      display: resolveDisplay(prefs),
     }
   }, [])
 }
@@ -130,4 +133,25 @@ export function useSelectedBiome(unlockedIds: string[], fallback: string): [stri
     () => '',
   )
   return [unlockedIds.includes(raw) ? raw : fallback, setSelectedBiome]
+}
+
+/** The current time, refreshed every minute and whenever the app returns to the foreground. */
+export function useClock(everyMs = 60_000): Date {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const tick = () => setNow(new Date())
+    const id = window.setInterval(tick, everyMs)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [everyMs])
+  return now
+}
+
+/** A device that probably struggles with a busy scene: few cores or little memory. Used only for the "auto" quality. */
+export function isModestDevice(): boolean {
+  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
+  return (navigator.hardwareConcurrency ?? 8) <= 4 || (mem !== undefined && mem <= 2)
 }

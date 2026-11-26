@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BIOMES } from '../../data/biomes'
 import { addDays } from '../../domain/dates'
 import { dateRange } from '../../domain/dates'
 import { challengeStatus, completionRate, countsFor } from '../../domain/habits'
@@ -39,6 +40,20 @@ export function InsightsPage({ data }: { data: AppData }) {
   const doneSessions = data.focusSessions.filter((x) => x.status === 'completed')
   const periodSessions = doneSessions.filter((x) => x.startedAt.slice(0, 10) >= from)
   const focusHours = (list: typeof doneSessions) => list.reduce((a, x) => a + x.plannedSeconds, 0) / 3600
+  // Focus minutes by time of day (by when each session started), for the chosen period
+  const buckets: [string, number, number][] = [['Morning', 5, 12], ['Afternoon', 12, 17], ['Evening', 17, 22], ['Night', 22, 5]]
+  const timeBuckets = buckets.map(([name, from, to]) => ({
+    name,
+    minutes: periodSessions
+      .filter((x) => {
+        const h = new Date(x.startedAt).getHours()
+        return from < to ? h >= from && h < to : h >= from || h < to
+      })
+      .reduce((a, x) => a + x.plannedSeconds / 60, 0),
+  }))
+  const bucketMax = Math.max(1, ...timeBuckets.map((b) => b.minutes))
+  const treesByBiome = BIOMES.map((biome) => ({ biome, count: data.plantedTrees.filter((t) => t.biomeId === biome.id).length })).filter((x) => x.count > 0)
+  const biomeMax = Math.max(1, ...treesByBiome.map((x) => x.count))
   const speciesDiscovered = data.discoveries.filter((d) => d.kind === 'species').length
   const hasAny = data.habits.length > 0 || data.challenges.length > 0 || data.focusSessions.length > 0
 
@@ -72,6 +87,35 @@ export function InsightsPage({ data }: { data: AppData }) {
               <div className="card tile"><span className="tile-value">{doneSessions.length}</span><span className="muted small">Sessions total</span></div>
               <div className="card tile"><span className="tile-value">{data.plantedTrees.length}</span><span className="muted small">Trees planted</span></div>
               <div className="card tile"><span className="tile-value">{speciesDiscovered}</span><span className="muted small">Species found</span></div>
+            </div>
+          )}
+
+          {doneSessions.length > 0 && (
+            <div className="card">
+              <h2>When you focus</h2>
+              <ul className="bars">
+                {timeBuckets.map((b) => (
+                  <li key={b.name}>
+                    <span>{b.name}</span>
+                    <span className="bar" aria-hidden="true"><span style={{ width: `${(b.minutes / bucketMax) * 100}%` }} /></span>
+                    <span className="small">{Math.round(b.minutes)} min</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {treesByBiome.length > 0 && (
+            <div className="card">
+              <h2>Trees by biome</h2>
+              <ul className="bars">
+                {treesByBiome.map(({ biome, count }) => (
+                  <li key={biome.id}>
+                    <span>{biome.name}</span>
+                    <span className="bar" aria-hidden="true"><span style={{ width: `${(count / biomeMax) * 100}%` }} /></span>
+                    <span className="small">{count}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

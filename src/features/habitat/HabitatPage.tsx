@@ -8,9 +8,14 @@ import { WorldOverview } from './WorldOverview'
 import { fromDateKey } from '../../domain/dates'
 import { resolvePosition } from '../../domain/terrain'
 import { existingAreaIds, treesInArea } from '../../domain/woodland'
-import type { AreaView, HabitatGameApi } from '../../game/habitatGame'
+import type { AreaView, HabitatGameApi, SceneSettings } from '../../game/habitatGame'
 import { hashString, type WorldShape } from '../../game/pixel'
-import { useIsPhone, useSelectedBiome, type AppData } from '../../hooks'
+import { useSoundscape } from '../../audio/useSoundscape'
+import type { AmbientEffect } from '../../data/biomes'
+import { isNight, lighting } from '../../domain/daylight'
+import { wantsCalm, wantsLowQuality } from '../../domain/preferences'
+import { seasonAt, type Season } from '../../domain/season'
+import { isModestDevice, useClock, useIsPhone, useMediaQuery, useSelectedBiome, type AppData } from '../../hooks'
 
 // Portrait world on tall viewports (phones, portrait tablets), landscape otherwise.
 const PORTRAIT_QUERY = '(max-aspect-ratio: 9/10)'
@@ -61,19 +66,38 @@ export function HabitatPage({ data }: { data: AppData }) {
     [data.discoveries],
   )
   const areaTrees = useMemo(() => treesInArea(trees, areaKey), [trees, areaKey])
+  // Look and feel: the clock sets the light, the date sets the season, and the player's options set the rest.
+  const display = data.display
+  const now = useClock()
+  const systemCalm = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const calm = wantsCalm(display, systemCalm)
+  const low = wantsLowQuality(display, isModestDevice())
+  const season: Season = display.seasons === 'off' ? 'summer' : display.seasons === 'auto' ? seasonAt(now) : display.seasons
+  const light = lighting(display.dayNight, now, biome.lightFloor ?? 0)
+  // the woodland's weather follows its season; every other biome keeps its own
+  const effect: AmbientEffect = biome.id === 'woodland' ? ({ winter: 'snow', autumn: 'leaves', spring: 'petals', summer: 'motes' } as const)[season] : biome.effect
+  const settings: SceneSettings = useMemo(
+    () => ({ darkness: light.darkness, warmth: light.warmth, calm, low, weather: display.weather }),
+    [light.darkness, light.warmth, calm, low, display.weather],
+  )
+  const settingsRef = useRef(settings)
+  useSoundscape({ active: true, biomeId: biome.id, night: isNight(light), sound: display.sound, music: display.music, volume: display.volume })
+
   const view: AreaView = useMemo(
     () => ({
       key: areaKey,
       shape,
       biomeId: biome.id,
-      effect: biome.effect,
+      effect,
+      season,
       theme: areaDef(biome, parseAreaId(areaKey).index).theme,
       seed: hashString(areaKey),
       palette: biome.palette,
       wildlife: WILDLIFE.filter((w) => w.biome === biome.id && discovered.has(w.id)).map((w) => ({
         id: w.id,
         behaviour: w.behaviour,
-        count: Math.min(w.behaviour === 'walk' || w.behaviour === 'glide' ? 2 : 3, 1 + Math.floor(areaTrees.length / 8)), // big animals need more room
+        count: low ? 1 : Math.min(w.behaviour === 'walk' || w.behaviour === 'glide' ? 2 : 3, 1 + Math.floor(areaTrees.length / 8)), // big animals need more room
+        activity: w.activity,
       })),
       // positions that would sit on water (older trees) are nudged for display only; records are never changed
       trees: areaTrees.map((t) => {
@@ -81,7 +105,7 @@ export function HabitatPage({ data }: { data: AppData }) {
         return { id: t.id, speciesId: t.speciesId, stage: t.growthStage, x: p.x, y: p.y }
       }),
     }),
-    [areaKey, shape, areaTrees, biome, discovered],
+    [areaKey, shape, areaTrees, biome, discovered, effect, season, low],
   )
 
   // Create the game once (Phaser is loaded lazily so it never slows down the other tabs).
@@ -89,6 +113,7 @@ export function HabitatPage({ data }: { data: AppData }) {
   useEffect(() => {
     viewRef.current = view
     areaKeyRef.current = areaKey
+    settingsRef.current = settings
   })
   useEffect(() => {
     let cancelled = false
@@ -96,6 +121,7 @@ export function HabitatPage({ data }: { data: AppData }) {
       .then(({ createHabitatGame }) => {
         if (cancelled || !host.current) return
         game.current = createHabitatGame(host.current, { onSelectTree: (id) => setSelection({ areaKey: areaKeyRef.current, id }) })
+        game.current.setSettings(settingsRef.current) // before the area, so the first build already knows the lighting and weather
         game.current.setArea(viewRef.current)
       })
       .catch(() => setLoadError(true))
@@ -109,6 +135,23 @@ export function HabitatPage({ data }: { data: AppData }) {
   useEffect(() => {
     game.current?.setArea(view)
   }, [view])
+
+  useEffect(() => {
+    game.current?.setSettings(settings)
+  }, [settings])
+
+  // Keyboard control of the world: arrows pan, plus and minus zoom.
+  const onKey = (e: React.KeyboardEvent) => {
+    const g = game.current
+    if (!g) return
+    const step = 0.12
+    const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
+    if (e.key in moves) g.pan(...moves[e.key])
+    else if (e.key === '+' || e.key === '=') g.zoom(1.2)
+    else if (e.key === '-' || e.key === '_') g.zoom(1 / 1.2)
+    else return
+    e.preventDefault()
+  }
 
   const selected = areaTrees.find((t) => t.id === selectedId)
   const species = selected ? getSpecies(selected.speciesId) : null
@@ -126,8 +169,8 @@ export function HabitatPage({ data }: { data: AppData }) {
       )}
 
       {/* The same frame and host element are kept in both layouts, so the game is never torn down on resize. */}
-      <div className={`game-frame ${phone ? 'full' : shape}`}>
-        <div ref={host} className="game-host" aria-label={`${biome.name}. Drag to pan, scroll or pinch to zoom, tap a tree for details.`} />
+      <div className={`game-frame ${phone ? 'full' : shape}`} tabIndex={0} role="group" onKeyDown={onKey} aria-label={`${biome.name}, ${areaName.name}. Use the arrow keys to pan and plus or minus to zoom.`}>
+        <div ref={host} className="game-host" aria-hidden="true" />
         {phone && (
           <button className="area-chip" onClick={() => setSheetOpen(true)} aria-haspopup="dialog" aria-label={`${areaName.name}, ${biome.name}. Change area or biome.`}>
             <span className="area-chip-text">
@@ -155,6 +198,13 @@ export function HabitatPage({ data }: { data: AppData }) {
           </div>
         )}
       </div>
+
+      {/* A text version of the world for screen readers: the picture itself is not readable. */}
+      <ul className="visually-hidden" aria-label={`Trees in ${areaName.name}`}>
+        {areaTrees.map((t) => (
+          <li key={t.id}>{getSpecies(t.speciesId)?.name}, planted {fromDateKey(t.plantedOn).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</li>
+        ))}
+      </ul>
 
       {!phone && (
         <>

@@ -110,6 +110,8 @@ export default function App() {
   const showToast = toast.length > 0 && !open // hold discoveries back until the session is over
 
   return (
+    <>
+    <a className="skip-link" href="#main">Skip to content</a>
     <div className={`shell ${immersiveFocus ? 'immersive-focus' : ''} ${immersiveHabitat ? 'immersive-habitat' : ''} ${navFaded ? 'nav-faded' : ''}`}>
       <aside className={`nav ${navFaded ? 'faded' : ''}`} aria-label="Primary">
         <div className="brand">
@@ -139,7 +141,7 @@ export default function App() {
         <FloatingMenu items={NAV} session={open} faded={navFaded} onItemClick={(to) => to === '/focus' && setMinimisedFor(null)} />
       )}
 
-      <main className="main">
+      <main className="main" id="main" tabIndex={-1}>
         <header className="topbar">
           <NavLink to="/settings" className="topbar-settings" aria-label="Settings">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -181,7 +183,7 @@ export default function App() {
             <Route path="/growth" element={<GrowthPage data={data} />} />
             <Route path="/challenges" element={<ChallengesPage data={data} />} />
             <Route path="/insights" element={<InsightsPage data={data} />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<SettingsPage display={data.display} />} />
             <Route path="/habitat" element={<HabitatPage data={data} />} />
             <Route
               path="/focus"
@@ -208,5 +210,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </>
   )
 }
