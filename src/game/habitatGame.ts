@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
-import type { AreaTheme } from '../data/biomes'
+import type { AmbientEffect, AreaTheme } from '../data/biomes'
 import type { GrowthStage } from '../domain/types'
 import { areaTerrain, type Terrain } from '../domain/terrain'
-import { dryPoint, hopTarget, shoreTarget } from '../domain/wildlifeMove'
+import { dryPoint, hopTarget, shoreTarget, walkTarget } from '../domain/wildlifeMove'
 import { SPRITE_H, SPRITE_W, groundCanvas, treeCanvas, wildlifeFrames, worldSize, type WorldShape, type WorldSize } from './pixel'
 
 /** The only data the game sees: plain view models. No React, no database, no sync. */
@@ -14,7 +14,7 @@ export interface TreeView {
   y: number
 }
 
-export type Behaviour = 'flutter' | 'hop' | 'perch' | 'shore'
+export type Behaviour = 'flutter' | 'hop' | 'perch' | 'shore' | 'walk'
 
 export interface WildlifeView {
   id: string
@@ -24,6 +24,8 @@ export interface WildlifeView {
 
 export interface AreaView {
   key: string // unique per area, also used to seed its terrain
+  biomeId: string
+  effect: AmbientEffect // weather drifting over the scene: motes, snow, dust or fog
   theme: AreaTheme
   shape: WorldShape // chosen from the viewport; tree positions are fractions so they work in either
   seed: number
@@ -127,12 +129,12 @@ class WoodlandScene extends Phaser.Scene {
 
     if (changedArea) {
       this.ground?.destroy()
-      const key = this.texture(`ground:${viewKey}`, () => groundCanvas(area.key, area.theme, area.palette, area.shape))
+      const key = this.texture(`ground:${viewKey}`, () => groundCanvas(area.key, area.theme, area.palette, area.shape, area.biomeId))
       this.ground = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-1)
       this.treeSprites.forEach((s) => s.destroy())
       this.treeSprites.clear()
       this.selectTree(null)
-      this.buildAmbient(area.seed)
+      this.buildAmbient(area.seed, area.effect)
       this.fit(true)
     }
 
@@ -204,6 +206,7 @@ class WoodlandScene extends Phaser.Scene {
     let frame = 'idle'
     if (c.behaviour === 'flutter') frame = `m${Math.floor(c.flap / 110) % frames}` // butterflies never stop flapping
     else if (c.behaviour === 'perch') frame = moving ? `m${Math.floor(c.flap / 70) % frames}` : 'idle' // up, level, down, level: about four beats a second
+    else if (c.behaviour === 'walk') frame = moving && Math.floor(c.flap / 230) % 2 ? 'm0' : 'idle' // two-pose stride
     else if (moving) frame = 'm0'
     if (frame !== c.frame) {
       c.frame = frame
@@ -235,8 +238,15 @@ class WoodlandScene extends Phaser.Scene {
       c.x1 = to ? to.x : c.x0
       c.y1 = to ? to.y : c.y0
       c.dur = to ? 320 : 200
+    } else if (c.behaviour === 'walk') {
+      // big animals (reindeer, zebra, giraffe, elephant) stride on dry ground, slower and further than hoppers
+      const to = walkTarget(this.terrain, w, h, { x: c.x0, y: c.y0 })
+      c.x1 = to ? to.x : c.x0
+      c.y1 = to ? to.y : c.y0
+      c.dur = to ? 900 + Math.hypot(c.x1 - c.x0, c.y1 - c.y0) * 38 : 400
+      c.arc = 1
     } else if (c.behaviour === 'shore') {
-      // frogs stay on the bank around the pond
+      // animals of the water's edge (frogs, herons) stay on the bank
       const to = shoreTarget(this.terrain, w, h, c.angle)
       c.angle = to.angle
       c.x1 = to.x
@@ -273,58 +283,104 @@ class WoodlandScene extends Phaser.Scene {
     this.animate(c, dt, true)
     c.s.setPosition(Math.round(x), Math.round(y))
     // flyers draw above the trees, ground animals sort with them by y
-    c.s.setDepth(c.behaviour === 'hop' || c.behaviour === 'shore' ? y : 50000 + y)
+    c.s.setDepth(c.behaviour === 'hop' || c.behaviour === 'shore' || c.behaviour === 'walk' ? y : 50000 + y)
     if (p >= 1) {
       c.dur = 0
-      c.wait = c.behaviour === 'hop' || c.behaviour === 'shore' ? 400 + Math.random() * 2200 : c.behaviour === 'perch' ? 1500 + Math.random() * 3500 : 200 + Math.random() * 600
+      c.wait = c.behaviour === 'walk' ? 900 + Math.random() * 3200 : c.behaviour === 'hop' || c.behaviour === 'shore' ? 400 + Math.random() * 2200 : c.behaviour === 'perch' ? 1500 + Math.random() * 3500 : 200 + Math.random() * 600
     }
   }
 
-  private buildAmbient(seed: number) {
-    this.ambient.forEach((o) => o.destroy())
-    this.ambient = []
-    const rnd = (n: number) => ((Math.sin(seed + n * 12.9898) * 43758.5453) % 1 + 1) % 1
-    // drifting cloud shadows
-    const shadowKey = this.texture('cloud-shadow', () => {
+  private canvasTexture(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void) {
+    return this.texture(key, () => {
       const c = document.createElement('canvas')
-      c.width = 64
-      c.height = 32
-      const g = c.getContext('2d')!
-      g.fillStyle = '#10200f'
-      for (let y = 0; y < 32; y++)
-        for (let x = 0; x < 64; x++) {
-          const dx = (x - 32) / 32
-          const dy = (y - 16) / 16
-          if (dx * dx + dy * dy < 1 && (x + y) % 2 === 0) g.fillRect(x, y, 1, 1)
-        }
+      c.width = w
+      c.height = h
+      draw(c.getContext('2d')!)
       return c
     })
-    // shadows only show over the terrain, never in the margin around it
+  }
+
+  /** Weather and light for the biome. Everything created here is tracked in `ambient` and cleared on the next area. */
+  private buildAmbient(seed: number, effect: AmbientEffect) {
+    this.ambient.forEach((o) => {
+      this.tweens.killTweensOf(o)
+      o.destroy()
+    })
+    this.ambient = []
+    const { w: W, h: H } = this.world
+    const rnd = (n: number) => ((Math.sin(seed + n * 12.9898) * 43758.5453) % 1 + 1) % 1
+    // effects stay over the terrain, never in the margin around it
     const clip = this.make.graphics({}, false)
-    clip.fillRect(0, 0, this.world.w, this.world.h)
+    clip.fillRect(0, 0, W, H)
     const mask = clip.createGeometryMask()
     this.ambient.push(clip)
-    for (let i = 0; i < 3; i++) {
-      const img = this.add.image(-80 + rnd(i) * this.world.w, 30 + rnd(i + 5) * (this.world.h - 60), shadowKey)
-        .setAlpha(0.22).setDepth(90000).setScale(1.5 + rnd(i + 9))
-      img.setMask(mask)
-      this.tweens.add({ targets: img, x: this.world.w + 90, duration: 70000 + i * 15000, repeat: -1, delay: -rnd(i) * 40000 })
-      this.ambient.push(img)
+
+    // dithered, drifting shapes: cloud shadows (woodland, savannah) or mist banks (marsh)
+    const drifting = (key: string, w: number, h: number, color: string, count: number, alpha: number, depth: number) => {
+      const tex = this.canvasTexture(key, w, h, (g) => {
+        g.fillStyle = color
+        for (let y = 0; y < h; y++)
+          for (let x = 0; x < w; x++) {
+            const dx = (x - w / 2) / (w / 2)
+            const dy = (y - h / 2) / (h / 2)
+            if (dx * dx + dy * dy < 1 && (x + y) % 2 === 0) g.fillRect(x, y, 1, 1)
+          }
+      })
+      for (let i = 0; i < count; i++) {
+        const img = this.add.image(-80 + rnd(i) * W, 30 + rnd(i + 5) * (H - 60), tex).setAlpha(alpha).setDepth(depth).setScale(1.5 + rnd(i + 9))
+        img.setMask(mask)
+        this.tweens.add({ targets: img, x: W + 90, duration: 70000 + i * 15000, repeat: -1, delay: -rnd(i) * 40000 })
+        this.ambient.push(img)
+      }
     }
-    // floating motes (pollen / fireflies)
-    const moteKey = this.texture('mote', () => {
-      const c = document.createElement('canvas')
-      c.width = 2
-      c.height = 2
-      const g = c.getContext('2d')!
-      g.fillStyle = '#f6f0a8'
-      g.fillRect(0, 0, 2, 2)
-      return c
-    })
-    for (let i = 0; i < 14; i++) {
-      const m = this.add.image(rnd(i + 20) * this.world.w, rnd(i + 40) * this.world.h, moteKey).setDepth(89000).setAlpha(0.2)
-      this.tweens.add({ targets: m, y: m.y - 14 - rnd(i) * 12, x: m.x + (rnd(i + 3) - 0.5) * 24, alpha: 0.9, duration: 2600 + rnd(i + 7) * 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd(i + 11) * 3000 })
-      this.ambient.push(m)
+
+    // small specks that rise, sway and fade in and out (pollen, fireflies)
+    const specks = (key: string, color: string, count: number, peak: number) => {
+      const tex = this.canvasTexture(key, 2, 2, (g) => {
+        g.fillStyle = color
+        g.fillRect(0, 0, 2, 2)
+      })
+      for (let i = 0; i < count; i++) {
+        const m = this.add.image(rnd(i + 20) * W, rnd(i + 40) * H, tex).setDepth(89000).setAlpha(0.2)
+        this.tweens.add({ targets: m, y: m.y - 14 - rnd(i) * 12, x: m.x + (rnd(i + 3) - 0.5) * 24, alpha: peak, duration: 2600 + rnd(i + 7) * 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd(i + 11) * 3000 })
+        this.ambient.push(m)
+      }
+    }
+
+    if (effect === 'motes') {
+      drifting('cloud-shadow', 64, 32, '#10200f', 3, 0.22, 90000)
+      specks('mote', '#f6f0a8', 14, 0.9)
+    } else if (effect === 'dust') {
+      drifting('heat-shadow', 64, 32, '#6a4a1a', 3, 0.14, 90000)
+      // dust and seed fluff blown steadily across the plains
+      const tex = this.canvasTexture('dust', 3, 1, (g) => {
+        g.fillStyle = '#efdca4'
+        g.fillRect(0, 0, 3, 1)
+      })
+      for (let i = 0; i < 18; i++) {
+        const d = this.add.image(rnd(i + 30) * W, rnd(i + 50) * H, tex).setDepth(89000).setAlpha(0.6)
+        this.tweens.add({ targets: d, x: W + 10, y: d.y + (rnd(i + 2) - 0.5) * 18, duration: 9000 + rnd(i + 4) * 8000, repeat: -1, delay: -rnd(i) * 9000 })
+        this.ambient.push(d)
+      }
+    } else if (effect === 'snow') {
+      const tex = this.canvasTexture('flake', 2, 2, (g) => {
+        g.fillStyle = '#ffffff'
+        g.fillRect(0, 0, 2, 2)
+      })
+      for (let i = 0; i < 46; i++) {
+        const dur = 7000 + rnd(i + 6) * 6000
+        const f = this.add.image(rnd(i + 20) * W, rnd(i + 40) * H, tex).setDepth(91000).setAlpha(0.9)
+        // finish the first fall from where the flake starts, then loop from the top
+        this.tweens.add({
+          targets: f, y: H + 6, duration: dur * (1 - f.y / H),
+          onComplete: () => f.active && this.tweens.add({ targets: f, y: { from: -6, to: H + 6 }, duration: dur, repeat: -1 }),
+        })
+        this.tweens.add({ targets: f, x: f.x + 6 + rnd(i) * 8, duration: 1800 + rnd(i + 9) * 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+        this.ambient.push(f)
+      }
+    } else {
+      drifting('mist', 96, 40, '#c4dccb', 5, 0.2, 90500)
+      specks('glow', '#8ff0d0', 12, 1)
     }
   }
 

@@ -22,7 +22,8 @@ const input = (n: number, species = 'oak', seconds = 1500): StatsInput => ({
 describe('stats and rules', () => {
   it('starts with only Oak', () => {
     const st = computeStats(input(0))
-    expect(SPECIES.filter((s) => ruleProgress(s.unlock, st).met).map((s) => s.id)).toEqual(['oak'])
+    // each biome's first species is always available, but only once that biome itself is unlocked
+    expect(SPECIES.filter((s) => s.biomes.includes('woodland') && ruleProgress(s.unlock, st).met).map((s) => s.id)).toEqual(['oak'])
   })
   it('unlocks by sessions, hours, tree counts and species counts', () => {
     const st = computeStats(input(8, 'birch', 3600))
@@ -63,6 +64,7 @@ describe('discoveries', () => {
   })
   it('every content definition has a valid, achievable rule', () => {
     const huge = computeStats({ ...input(60, 'birch', 3600), trees: Array.from({ length: 60 }, (_, i) => tree(i, ['oak', 'cherry-blossom', 'birch'][i % 3])) })
+    huge.treesByBiome = { tundra: 20, savannah: 20, marsh: 20 }
     huge.bestHabitStreak = 7 // streaks come from habits, covered in habits.test.ts
     for (const d of [...SPECIES, ...WILDLIFE, ...ACHIEVEMENTS]) expect(ruleProgress(d.unlock, huge).met, d.id).toBe(true)
   })

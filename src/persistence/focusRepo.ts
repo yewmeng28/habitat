@@ -1,4 +1,4 @@
-import { getBiome } from '../data/biomes'
+import { getBiome, isBiomeUnlocked } from '../data/biomes'
 import { getSpecies } from '../data/species'
 import { toDateKey } from '../domain/dates'
 import {
@@ -45,12 +45,17 @@ export async function getOpenSession(): Promise<FocusSession | undefined> {
 
 export async function startSession(speciesId: string, minutes: number, biomeId = 'woodland'): Promise<FocusSession> {
   const species = getSpecies(speciesId)
+  const biome = getBiome(biomeId)
+  if (!biome) throw new Error('Unknown biome.')
   if (!species || !species.biomes.includes(biomeId)) throw new Error('That tree cannot be planted here.')
   if (!Number.isInteger(minutes) || minutes < MIN_MINUTES || minutes > MAX_MINUTES)
     throw new Error(`Choose between ${MIN_MINUTES} and ${MAX_MINUTES} minutes.`)
   return db.transaction('rw', [db.focusSessions, db.plantedTrees, db.habits, db.completions], async () => {
     if (await getOpenSession()) throw new Error('A focus session is already in progress.')
-    if (!isSpeciesUnlockedBy(species.id, await currentStats())) throw new Error(`${species.name} is not unlocked yet.`)
+    const stats = await currentStats()
+    // Biome unlocks use the total trees planted anywhere; species unlock by their own rule.
+    if (!isBiomeUnlocked(biome, stats.trees)) throw new Error(`${biome.name} is not unlocked yet.`)
+    if (!isSpeciesUnlockedBy(species.id, stats)) throw new Error(`${species.name} is not unlocked yet.`)
     const session: FocusSession = {
       ...newBase(),
       speciesId,

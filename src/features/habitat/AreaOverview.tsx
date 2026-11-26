@@ -4,6 +4,9 @@ import type { PlantedTree } from '../../domain/types'
 const COLORS: Record<string, string> = {
   oak: '#438a37', pine: '#1d4a30', birch: '#b4dc7a', maple: '#c9552e',
   'cherry-blossom': '#f08fb2', willow: '#86b04e', ginkgo: '#e0b92e', cedar: '#2f6e68',
+  'snowy-pine': '#2f6b6b', 'frost-spruce': '#4a7f90', 'arctic-willow': '#9ab8a4',
+  acacia: '#8aa83a', baobab: '#8a6a48', 'doum-palm': '#4f9a35',
+  mangrove: '#2f6e32', 'bald-cypress': '#a8924a', 'marsh-willow': '#3f8068',
 }
 
 /**
@@ -25,8 +28,8 @@ export function AreaOverview({
         return (
           <button key={id} className={`ov-area ${id === activeId ? 'on' : ''}`} onClick={() => onPick(id)} aria-label={`${def.name}, ${here.length} of about ${def.capacity} trees`}>
             <svg viewBox="0 0 100 70" aria-hidden="true">
-              <rect width="100" height="70" fill="#5c8a3a" />
-              <path d="M0 48 Q25 44 50 49 T100 46" stroke="#a9824f" strokeWidth="5" fill="none" />
+              <rect width="100" height="70" fill={biome.palette.grass[0]} />
+              <path d="M0 48 Q25 44 50 49 T100 46" stroke={biome.palette.path} strokeWidth="5" fill="none" />
               {here.map((t) => (
                 <circle key={t.id} cx={6 + t.position.x * 88} cy={8 + t.position.y * 54} r="3.2" fill={COLORS[t.speciesId] ?? '#2f5e2a'} stroke="#12200f" strokeWidth=".6" />
               ))}

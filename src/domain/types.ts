@@ -103,11 +103,12 @@ export type Rule =
   | { type: 'hours'; n: number } // total focused hours
   | { type: 'trees'; n: number } // total planted trees
   | { type: 'species-trees'; speciesId: string; n: number }
+  | { type: 'biome-trees'; biomeId: string; n: number } // trees planted in one biome
   | { type: 'area-trees'; n: number } // trees in a single area (density)
   | { type: 'species-discovered'; n: number } // distinct tree species unlocked
   | { type: 'habit-streak'; n: number } // best current habit streak
 
-export type DiscoveryKind = 'species' | 'wildlife' | 'achievement'
+export type DiscoveryKind = 'species' | 'wildlife' | 'achievement' | 'biome'
 
 /** First-time discovery of an item. Unique per kind+itemId, so awarding is idempotent. */
 export interface Discovery extends BaseRecord {

@@ -1,3 +1,4 @@
+import { BIOMES, getBiome, parseAreaId } from '../data/biomes'
 import { hash, mulberry32 } from './rng'
 
 /**
@@ -7,6 +8,9 @@ import { hash, mulberry32 } from './rng'
  */
 export interface Terrain {
   pond: { x: number; y: number }
+  /** Radii of the main water body including its shore, in pixels. Larger in a marsh, smaller at a watering hole. */
+  pondRx: number
+  pondRy: number
   pathY: number
   pathAmp: number
   phase: number
@@ -16,13 +20,16 @@ export interface Terrain {
 
 export function areaTerrain(areaKey: string): Terrain {
   const r = mulberry32(hash(`${areaKey}#terrain`))
+  const biome = getBiome(parseAreaId(areaKey).biomeId) ?? BIOMES[0] // unknown keys (e.g. backdrops) use woodland
   const left = r() < 0.5
   return {
     pond: { x: left ? 0.2 : 0.8, y: 0.16 + r() * 0.12 },
+    pondRx: biome.terrain.pondRx,
+    pondRy: biome.terrain.pondRy,
     pathY: 0.66 + r() * 0.12,
     pathAmp: 0.025 + r() * 0.02,
     phase: r() * Math.PI * 2,
-    hasStream: r() < 0.5, // drawn last, so adding it did not move the pond or path of any area
+    hasStream: r() < biome.terrain.streamChance, // drawn last, so it never moves the pond or path
   }
 }
 
@@ -31,7 +38,6 @@ export const pathYAt = (t: Terrain, x: number) => t.pathY + Math.sin(x * Math.PI
 export const streamXAt = (t: Terrain, y: number) => t.pond.x + Math.sin((y - t.pond.y) * 8 + t.phase) * 0.035
 
 // Pixel sizes of the drawn features (kept in sync with the renderer in src/game/pixel.ts) and of a tree sprite.
-const POND = { rx: 30, ry: 17 } // water plus sandy shore
 const STREAM_HALF = 4
 const CROWN_HALF = 12 // half the visible crown width
 const CROWN_UP = 30 // how far the crown rises above the base point
@@ -52,7 +58,7 @@ function treeBlockedIn(t: Terrain, nx: number, ny: number, W: number, H: number)
   // The whole crown must stay off the water, not just the trunk: nearest point of the crown box to the pond.
   const cx = clamp(pondX, x - CROWN_HALF, x + CROWN_HALF)
   const cy = clamp(pondY, y - CROWN_UP, y)
-  if (((cx - pondX) / POND.rx) ** 2 + ((cy - pondY) / POND.ry) ** 2 < 1) return true
+  if (((cx - pondX) / t.pondRx) ** 2 + ((cy - pondY) / t.pondRy) ** 2 < 1) return true
   for (let yy = y - CROWN_UP; t.hasStream && yy <= y; yy += 3) {
     if (yy > pondY && Math.abs(x - streamXAt(t, yy / H) * W) < CROWN_HALF + STREAM_HALF) return true
   }
@@ -68,7 +74,7 @@ export function isBlocked(t: Terrain, nx: number, ny: number): boolean {
 export function isOnWaterOrPath(t: Terrain, x: number, y: number, W: number, H: number): boolean {
   const pondX = t.pond.x * W
   const pondY = t.pond.y * H
-  if (((x - pondX) / (POND.rx + 3)) ** 2 + ((y - pondY) / (POND.ry + 3)) ** 2 < 1) return true
+  if (((x - pondX) / (t.pondRx + 3)) ** 2 + ((y - pondY) / (t.pondRy + 3)) ** 2 < 1) return true
   if (t.hasStream && y > pondY && Math.abs(x - streamXAt(t, y / H) * W) < STREAM_HALF + 4) return true
   return Math.abs(y - pathYAt(t, x / W) * H) < 7
 }
@@ -103,7 +109,7 @@ export function bridgePoint(t: Terrain, W: number, H: number): { x: number; y: n
 export function isInWater(t: Terrain, x: number, y: number, W: number, H: number, margin = 0): boolean {
   const pondX = t.pond.x * W
   const pondY = t.pond.y * H
-  if (((x - pondX) / (POND.rx - 2 + margin)) ** 2 + ((y - pondY) / (POND.ry - 2 + margin)) ** 2 < 1) return true
+  if (((x - pondX) / (t.pondRx - 2 + margin)) ** 2 + ((y - pondY) / (t.pondRy - 2 + margin)) ** 2 < 1) return true
   if (t.hasStream && y > pondY) {
     const b = bridgePoint(t, W, H)
     if (Math.abs(x - b.x) <= 9 && Math.abs(y - b.y) <= 6) return false

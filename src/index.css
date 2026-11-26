@@ -246,13 +246,26 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .game-frame.full .game-empty { bottom: calc(env(safe-area-inset-bottom) + 84px); }
 .game-frame.full .tree-info { top: calc(env(safe-area-inset-top) + 64px); }
 .area-chip {
-  /* two lines (name, then count) and a width cap, so it never runs under the settings and energy buttons top-right */
-  position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 12px; z-index: 12; min-height: 44px; min-width: 0; max-width: calc(100vw - 184px); padding: 4px 14px;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.2; text-align: left;
+  /* a name block plus a circled chevron, so it reads as a dropdown; capped so it never runs under the top-right buttons */
+  position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 12px; z-index: 12; min-height: 48px; min-width: 0; max-width: calc(100vw - 184px);
+  padding: 4px 8px 4px 14px; display: flex; align-items: center; gap: 10px; text-align: left; line-height: 1.2;
   border-radius: 999px; border: 1px solid var(--line); color: var(--ink); font: inherit; cursor: pointer;
   background: color-mix(in srgb, var(--surface) 82%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.area-chip-text { display: flex; flex-direction: column; min-width: 0; }
+.area-chip-text > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.area-chip-caret {
+  flex-shrink: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: var(--green-soft); border: 1px solid var(--green); color: var(--green);
+}
+.area-chip-caret svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.sheet-sub { margin: 14px 0 8px; }
+.world { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.world-card { display: flex; flex-direction: column; gap: 4px; padding: 8px; text-align: left; background: var(--surface); border: 2px solid var(--line); border-radius: 12px; color: var(--ink); font: inherit; cursor: pointer; }
+.world-card.on { border-color: var(--green); background: var(--green-soft); }
+.world-card.locked { opacity: .7; cursor: default; }
+.world-swatch { display: block; height: 38px; border-radius: 6px; image-rendering: pixelated; }
+.world-name { font-weight: 600; font-size: .95rem; }
 .sheet-backdrop { position: fixed; inset: 0; z-index: 23; /* above the menu button (22), so it sits behind the sheet */ background: rgba(0, 0, 0, .4); }
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 24; max-height: 72dvh; overflow: auto;
@@ -340,3 +353,7 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .rotate-overlay svg { width: 56px; height: 56px; fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-90deg); }
 @media (prefers-reduced-motion: no-preference) { .rotate-overlay svg { animation: rotate-hint 2.2s ease-in-out infinite; } }
 @keyframes rotate-hint { 0%, 30% { transform: rotate(-90deg); } 70%, 100% { transform: rotate(0deg); } }
+
+.chip.wide { padding: 0 14px; }
+.grid-heading { grid-column: 1 / -1; font-weight: 700; margin-top: 8px; color: var(--muted); letter-spacing: .02em; }
+.world-swatch.big { width: 64px; height: 56px; }

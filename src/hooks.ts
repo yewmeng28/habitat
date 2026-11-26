@@ -94,3 +94,40 @@ export function useMediaQuery(query: string): boolean {
 
 /** Matches the breakpoint where the layout switches from bottom navigation to the sidebar. */
 export const useIsPhone = () => useMediaQuery('(max-width: 767px)')
+
+// ---- Selected biome: shared by Habitat (which world you are viewing) and Focus (where the next tree is planted) ----
+const BIOME_KEY = 'habitat.selectedBiome'
+let selectedBiome: string | null = null
+const biomeListeners = new Set<() => void>()
+const readBiome = () => {
+  if (selectedBiome === null) {
+    try {
+      selectedBiome = localStorage.getItem(BIOME_KEY) ?? ''
+    } catch {
+      selectedBiome = '' // storage can be blocked; the choice then just lasts for this visit
+    }
+  }
+  return selectedBiome
+}
+function setSelectedBiome(id: string) {
+  selectedBiome = id
+  try {
+    localStorage.setItem(BIOME_KEY, id)
+  } catch {
+    /* ignore */
+  }
+  biomeListeners.forEach((l) => l())
+}
+
+/** The biome being viewed and planted in. Falls back to `fallback` if the stored one is missing or locked. */
+export function useSelectedBiome(unlockedIds: string[], fallback: string): [string, (id: string) => void] {
+  const raw = useSyncExternalStore(
+    (cb) => {
+      biomeListeners.add(cb)
+      return () => biomeListeners.delete(cb)
+    },
+    readBiome,
+    () => '',
+  )
+  return [unlockedIds.includes(raw) ? raw : fallback, setSelectedBiome]
+}

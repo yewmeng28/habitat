@@ -237,6 +237,223 @@ SPECIES.cedar = {
   },
 }
 
+// ---- Frozen Tundra, Golden Savannah and Whispering Marsh species ----
+const SNOW = '#ffffff'
+const SNOW_SHADE = '#e1ecf3'
+
+SPECIES['snowy-pine'] = {
+  // Pine tiers with fresh snow settled on the ledges and slopes.
+  leaf: ['#1d4a4a', '#2f6b6b', '#4f9a9a'],
+  soil: '#5b4128',
+  draw(ctx, s) {
+    const th = Math.round(7 * s)
+    trunk(ctx, 16, 47, 2, th, '#6b4a2b', '#4a321c')
+    const base = 47 - th
+    for (const [hw, h, up] of [[9, 9, 0], [7, 9, 7], [5, 9, 14]]) {
+      const bottom = base - up * s + 2
+      const H = Math.round(h * s) + 2
+      for (let i = 0; i < H; i++) {
+        const w = Math.max(1, Math.round((hw * s * (i + 1)) / H))
+        const y = bottom - H + i
+        const c = SPECIES['snowy-pine'].leaf
+        px(ctx, 16 - w, y, w * 2, 1, c[1])
+        px(ctx, 16 + w - 1, y, 1, 1, c[0])
+        if (i % 3 === 1) px(ctx, 16 - w, y, 2, 1, SNOW)
+        if (i % 3 === 2) px(ctx, 16 + w - 2, y, 2, 1, SNOW_SHADE)
+        if (i === H - 1) px(ctx, 16 - w, y, w * 2, 1, SNOW_SHADE) // snow on the ledge
+      }
+    }
+    px(ctx, 15, base - 24 * s, 2, 2, SNOW)
+  },
+}
+SPECIES['frost-spruce'] = {
+  // Tall and narrow, five slim tiers, silvered with frost.
+  leaf: ['#2f5a6a', '#4a7f90', '#8fc0cf'],
+  soil: '#5b4128',
+  draw(ctx, s) {
+    const th = Math.round(6 * s)
+    trunk(ctx, 16, 47, 2, th, '#5a4430', '#3a2c1e')
+    const base = 47 - th
+    ;[[6, 0], [6, 7], [5, 14], [4, 21], [3, 28]].forEach(([hw, up]) => {
+      const bottom = base - up * s + 1
+      const H = Math.max(3, Math.round(8 * s))
+      for (let i = 0; i < H; i++) {
+        const w = Math.max(1, Math.round((hw * s * (i + 1)) / H))
+        const y = bottom - H + i
+        const c = SPECIES['frost-spruce'].leaf
+        px(ctx, 16 - w, y, w * 2, 1, c[1])
+        px(ctx, 16 + w - 1, y, 1, 1, c[0])
+        px(ctx, 16 - w, y, 1, 1, c[2])
+        if ((i + up) % 4 === 0) px(ctx, 16 - w + 1, y, 1, 1, SNOW)
+      }
+    })
+    px(ctx, 16, base - 35 * s, 1, 2, SNOW)
+  },
+}
+SPECIES['arctic-willow'] = {
+  // Low, wide and wind-bent, studded with white catkins.
+  leaf: ['#5f7e6c', '#8eb09a', '#cfe4d8'],
+  soil: '#6b5a40',
+  draw(ctx, s) {
+    const th = Math.round(8 * s)
+    trunk(ctx, 15, 47, s < 0.6 ? 3 : 4, th, '#6a5a48', '#4a3c2c')
+    px(ctx, 17, 47 - th, Math.round(7 * s), 2, '#6a5a48') // bent branch
+    const ty = 47 - th
+    const c = SPECIES['arctic-willow'].leaf
+    blob(ctx, 16 - 9 * s, ty - 1 * s, 6 * s, c)
+    blob(ctx, 16 + 9 * s, ty - 2 * s, 6 * s, c)
+    blob(ctx, 16, ty - 5 * s, 9 * s, c)
+    if (s > 0.6) for (const [dx, dy] of [[-8, -4], [-3, -9], [4, -7], [9, -3], [0, -3], [-10, 0], [6, -11]]) px(ctx, 16 + dx * s, ty + dy * s, SNOW, 1, 2)
+  },
+}
+SPECIES.acacia = {
+  // A thin trunk forking under a flat, wide umbrella of leaves.
+  leaf: ['#5a7220', '#8aa83a', '#b6cc58'],
+  soil: '#8a6a3a',
+  draw(ctx, s) {
+    const th = Math.round(20 * s)
+    trunk(ctx, 16, 47, s < 0.6 ? 2 : 3, th, '#7a5a3a', '#523a24')
+    const top = 47 - th
+    for (let i = 0; i < Math.round(6 * s); i++) {
+      px(ctx, 15 - i, top - i * 0.6, 2, 2, '#6a4a2e')
+      px(ctx, 17 + i, top - i * 0.6, 2, 2, '#6a4a2e')
+    }
+    const c = SPECIES.acacia.leaf
+    const rx = Math.max(3, Math.round(15 * s))
+    const ry = Math.max(1, Math.round(4 * s))
+    const cy = Math.round(top - 4 * s)
+    ell(ctx, 17, cy + 1, rx, ry, c[0])
+    ell(ctx, 16, cy, rx, ry, c[1])
+    ell(ctx, 14, cy - 1, Math.max(2, rx - 4), Math.max(1, ry - 1), c[2])
+    ell(ctx, 13, Math.round(cy - 4 * s), Math.round(rx * 0.55), Math.max(1, ry - 1), c[1])
+    ell(ctx, 12, Math.round(cy - 4 * s) - 1, Math.max(1, Math.round(rx * 0.35)), 1, c[2])
+  },
+}
+SPECIES.baobab = {
+  // A vast bottle-shaped trunk with a few stubby branches and small tufts of leaves.
+  leaf: ['#4a7a2a', '#6a9a3a', '#9ac85a'],
+  soil: '#8a6a3a',
+  draw(ctx, s) {
+    const th = Math.max(6, Math.round(20 * s))
+    const wBase = Math.max(3, Math.round(12 * s))
+    const wTop = Math.max(2, Math.round(7 * s))
+    for (let i = 0; i < th; i++) {
+      const w = Math.round(wBase + (wTop - wBase) * (i / th))
+      const x = 16 - Math.floor(w / 2)
+      px(ctx, x, 47 - i, w, 1, '#8a6a48')
+      px(ctx, x + w - 2, 47 - i, 2, 1, '#6a4a30')
+      px(ctx, x, 47 - i, 1, 1, '#a88a64')
+      if (i % 5 === 2) px(ctx, x + 2, 47 - i, Math.max(1, w - 5), 1, '#7a5a3c') // wrinkles
+    }
+    const top = 47 - th
+    const c = SPECIES.baobab.leaf
+    for (const dx of [-1, 0, 1]) {
+      for (let i = 0; i < Math.round(6 * s); i++) px(ctx, 16 + dx * (2 + i), top - i * 1.2, 2, 2, '#7a5a3c')
+      blob(ctx, 16 + dx * (3 + 6 * s), top - 6 * s, Math.max(2, 3.2 * s), c)
+    }
+  },
+}
+SPECIES['doum-palm'] = {
+  // A gently curved trunk topped with a fan of stiff, drooping fronds.
+  leaf: ['#2f6a22', '#4f9a35', '#8ad05a'],
+  soil: '#8a6a3a',
+  draw(ctx, s) {
+    const th = Math.max(5, Math.round(23 * s))
+    let tx = 16
+    for (let i = 0; i < th; i++) {
+      tx = 16 + Math.round(Math.sin(i * 0.17) * 2 * s)
+      px(ctx, tx - 1, 47 - i, 3, 1, '#8a6a48')
+      if (i % 3 === 0) px(ctx, tx - 1, 47 - i, 3, 1, '#6a4a30')
+    }
+    const cy = 47 - th
+    const c = SPECIES['doum-palm'].leaf
+    const len = Math.max(3, Math.round(11 * s))
+    for (let a = 0; a < 9; a++) {
+      const ang = Math.PI * (1.08 + (a / 8) * 0.84)
+      for (let k = 1; k <= len; k++) {
+        const x = tx + Math.cos(ang) * k
+        const y = cy + Math.sin(ang) * k * 0.75 + (k / len) ** 2 * 5 * s
+        px(ctx, x, y, 1, 1, a % 2 ? c[1] : c[0])
+        if (k > len * 0.4 && k % 2 === 0) px(ctx, x, y + 1, 1, 1, c[2])
+      }
+    }
+    px(ctx, tx - 1, cy + 1, 3, 2, '#8a4a1a') // fruit
+  },
+}
+SPECIES.mangrove = {
+  // A rounded dark crown lifted on arching stilt roots.
+  leaf: ['#1f4a22', '#2f6e32', '#5aa04a'],
+  soil: '#4a4a2a',
+  draw(ctx, s) {
+    const rootTop = 47 - Math.round(9 * s)
+    for (const side of [-1, 1]) {
+      for (const off of [4, 8]) {
+        const steps = Math.max(3, Math.round(9 * s))
+        for (let k = 0; k <= steps; k++) {
+          const f = k / steps
+          px(ctx, 16 + side * Math.round(off * s * f), rootTop + Math.round(((47 - rootTop) * f) ** 1), 1, 2, '#5a4030')
+        }
+      }
+    }
+    const th = Math.round(13 * s)
+    trunk(ctx, 16, rootTop + 1, 2, th, '#5a4030', '#3a2a20')
+    const ty = rootTop - th
+    const c = SPECIES.mangrove.leaf
+    blob(ctx, 16 - 7 * s, ty + 1 * s, 5 * s, c)
+    blob(ctx, 16 + 7 * s, ty + 1 * s, 5 * s, c)
+    blob(ctx, 16, ty - 4 * s, 8 * s, c)
+    if (s > 0.9) for (const dx of [-6, 2, 8]) px(ctx, 16 + dx, ty + 6, 1, 6, '#5a4030') // hanging roots
+  },
+}
+SPECIES['bald-cypress'] = {
+  // A buttressed trunk with knobbly knees and ragged, feathery tiers that turn rusty at the tips.
+  leaf: ['#5a7a2a', '#7f9f3a', '#b8a050'],
+  soil: '#4a4a2a',
+  draw(ctx, s) {
+    const th = Math.round(12 * s)
+    for (let i = 0; i < th; i++) {
+      const w = Math.max(2, Math.round(2 + (1 - i / th) * 4 * s))
+      px(ctx, 16 - Math.floor(w / 2), 47 - i, w, 1, i % 2 ? '#7a5a3a' : '#6a4a30')
+    }
+    if (s > 0.6) for (const dx of [-8, -5, 6, 9]) px(ctx, 16 + dx, 45, 2, 3, '#6a4a30') // knees
+    const base = 47 - th
+    const c = SPECIES['bald-cypress'].leaf
+    ;[[8, 0], [6, 8], [4, 15]].forEach(([hw, up]) => {
+      const H = Math.max(3, Math.round(10 * s))
+      const bottom = base - up * s + 2
+      for (let i = 0; i < H; i++) {
+        const jag = ((i * 7) % 3) - 1
+        const w = Math.max(1, Math.round((hw * s * (i + 1)) / H) + jag)
+        const y = bottom - H + i
+        px(ctx, 16 - w, y, w * 2, 1, c[1])
+        px(ctx, 16 - w, y, 1, 1, c[0])
+        if (i % 2 === 0) px(ctx, 16 + w - 1, y, 1, 1, c[2])
+      }
+    })
+  },
+}
+SPECIES['marsh-willow'] = {
+  // Dark, leaning dome with long trailing fronds tipped with moss.
+  leaf: ['#2a5a4a', '#3f8068', '#7fb09a'],
+  soil: '#4a4a2a',
+  draw(ctx, s) {
+    const th = Math.round(14 * s)
+    trunk(ctx, 15, 47, s < 0.6 ? 3 : 5, th, '#4a4030', '#2f2a20')
+    const ty = 47 - th
+    const c = SPECIES['marsh-willow'].leaf
+    blob(ctx, 17, ty - 4 * s, 9 * s, c)
+    blob(ctx, 17 - 6 * s, ty - 1 * s, 5 * s, c)
+    blob(ctx, 17 + 7 * s, ty - 2 * s, 5 * s, c)
+    for (const dx of [-14, -11, -8, -5, 2, 5, 8, 11, 14]) {
+      const x = Math.round(17 + dx * s)
+      const top = Math.round(ty - 1 * s + Math.abs(dx) * 0.1)
+      const len = Math.round((46 - top) * (0.5 + (Math.abs(dx) % 5) * 0.08))
+      px(ctx, x, top, 1, len, c[1])
+      px(ctx, x, top + len - 3, 1, 3, '#8ab04a') // moss at the tips
+    }
+  },
+}
+
 // ---------- Wildlife ----------
 
 function fromRows(rows: string[], palette: Record<string, string>): HTMLCanvasElement {
@@ -380,25 +597,205 @@ const WILDLIFE_ART: Record<string, () => WildlifeFrames> = {
     ],
   }),
 
-  // Crouched with bulging eyes, then legs thrown out mid-hop.
-  frog: () => ({
+  frog: () => frogArt({ body: '#5aa83c', dark: '#3f7a2c', belly: '#a8d878' }),
+}
+
+
+interface FrogPalette { body: string; dark: string; belly: string }
+/** Crouched with bulging eyes, then legs thrown out mid-hop. */
+function frogArt({ body, dark, belly }: FrogPalette): WildlifeFrames {
+  return {
     idle: drawn(12, 9, (c) => {
-      ell(c, 6, 6, 4, 2, '#5aa83c'); ell(c, 6, 7, 3, 1, '#a8d878')
-      ell(c, 4, 3, 1, 1, '#5aa83c'); ell(c, 8, 3, 1, 1, '#5aa83c')
+      ell(c, 6, 6, 4, 2, body); ell(c, 6, 7, 3, 1, belly)
+      ell(c, 4, 3, 1, 1, body); ell(c, 8, 3, 1, 1, body)
       px(c, 4, 2, '#fff6a8'); px(c, 8, 2, '#fff6a8'); px(c, 4, 3, '#111111'); px(c, 8, 3, '#111111')
-      px(c, 5, 5, 3, 1, '#3f7a2c')
-      px(c, 1, 7, 3, 1, '#3f7a2c'); px(c, 8, 7, 3, 1, '#3f7a2c'); px(c, 1, 8, 2, 1, '#3f7a2c'); px(c, 9, 8, 2, 1, '#3f7a2c')
+      px(c, 5, 5, 3, 1, dark)
+      px(c, 1, 7, 3, 1, dark); px(c, 8, 7, 3, 1, dark); px(c, 1, 8, 2, 1, dark); px(c, 9, 8, 2, 1, dark)
     }),
     moving: [
       drawn(12, 9, (c) => {
-        ell(c, 6, 4, 3, 2, '#5aa83c'); ell(c, 6, 5, 2, 1, '#a8d878')
+        ell(c, 6, 4, 3, 2, body); ell(c, 6, 5, 2, 1, belly)
         px(c, 4, 2, '#fff6a8'); px(c, 8, 2, '#fff6a8'); px(c, 4, 3, '#111111'); px(c, 8, 3, '#111111')
-        px(c, 0, 5, 4, 1, '#3f7a2c'); px(c, 0, 6, 2, 1, '#3f7a2c') // hind legs trailing
-        px(c, 9, 5, 3, 1, '#3f7a2c'); px(c, 10, 6, 2, 1, '#3f7a2c') // forelegs reaching
+        px(c, 0, 5, 4, 1, dark); px(c, 0, 6, 2, 1, dark)
+        px(c, 9, 5, 3, 1, dark); px(c, 10, 6, 2, 1, dark)
       }),
     ],
-  }),
+  }
 }
+WILDLIFE_ART['marsh-frog'] = () => frogArt({ body: '#4a7a3a', dark: '#2f5a2a', belly: '#a0b868' })
+
+// ---- Frozen Tundra ----
+WILDLIFE_ART['snow-hare'] = () => {
+  const W = '#f4f9fb'
+  const S = '#cfdde6'
+  return {
+    idle: drawn(16, 14, (c) => {
+      ell(c, 3, 10, 2, 2, '#ffffff')
+      ell(c, 8, 10, 4, 3, W); ell(c, 9, 11, 3, 2, S)
+      ell(c, 12, 6, 3, 3, W)
+      px(c, 11, 1, 2, 4, W); px(c, 14, 2, 2, 4, W); px(c, 11, 1, 2, 1, '#222222'); px(c, 14, 2, 2, 1, '#222222') // black ear tips
+      px(c, 12, 2, 1, 2, '#e8b0a8'); px(c, 15, 3, 1, 2, '#e8b0a8')
+      px(c, 13, 5, '#111111'); px(c, 15, 7, '#e8909a')
+      px(c, 7, 13, 3, 1, S); px(c, 11, 13, 4, 1, S)
+    }),
+    moving: [
+      drawn(16, 14, (c) => {
+        ell(c, 2, 9, 2, 2, '#ffffff')
+        ell(c, 8, 9, 5, 2, W); ell(c, 9, 10, 3, 1, S)
+        ell(c, 13, 7, 2, 2, W)
+        px(c, 9, 4, 5, 2, W); px(c, 9, 4, 2, 1, '#222222')
+        px(c, 14, 6, '#111111'); px(c, 15, 8, '#e8909a')
+        px(c, 2, 11, 5, 1, S); px(c, 11, 11, 4, 1, S)
+      }),
+    ],
+  }
+}
+WILDLIFE_ART['arctic-fox'] = () => {
+  const W = '#f4f9fb'
+  const S = '#cfdde6'
+  const body = (c: Ctx) => {
+    ell(c, 4, 8, 4, 3, W); ell(c, 3, 9, 3, 2, S) // bushy tail
+    ell(c, 11, 8, 5, 3, W); ell(c, 12, 9, 4, 2, S)
+    ell(c, 17, 6, 3, 3, W); px(c, 20, 7, 2, 2, W); px(c, 21, 7, '#222222') // snout and nose
+    px(c, 15, 1, 2, 3, W); px(c, 18, 1, 2, 3, W); px(c, 16, 2, 1, 2, '#e0eaf0'); px(c, 19, 2, 1, 2, '#e0eaf0')
+    px(c, 18, 5, '#111111')
+  }
+  return {
+    idle: drawn(22, 14, (c) => {
+      body(c)
+      for (const x of [8, 11, 14, 17]) px(c, x, 11, 2, 3, S)
+    }),
+    moving: [
+      drawn(22, 14, (c) => {
+        body(c)
+        px(c, 6, 11, 2, 3, S); px(c, 10, 11, 2, 2, S); px(c, 15, 11, 2, 3, S); px(c, 19, 11, 2, 2, S) // trotting stride
+      }),
+    ],
+  }
+}
+WILDLIFE_ART.reindeer = () => {
+  const B = '#8a6a4a'
+  const D = '#6a4a30'
+  const body = (c: Ctx) => {
+    ell(c, 13, 13, 8, 4, B); ell(c, 14, 15, 6, 2, '#a88a6a')
+    ell(c, 21, 10, 3, 4, '#e8e0d0') // pale chest and neck
+    ell(c, 24, 6, 3, 3, B); px(c, 26, 8, 3, 2, D); px(c, 28, 8, '#222222'); px(c, 25, 5, '#111111')
+    px(c, 4, 11, 2, 2, '#e8e0d0') // tail
+    // antlers
+    for (const [x, y, w, h] of [[22, 0, 1, 4], [21, 0, 1, 2], [20, 1, 1, 1], [24, 0, 1, 4], [25, 0, 1, 2], [26, 1, 1, 1], [23, 2, 3, 1]]) px(c, x, y, w, h, '#d8c8a0')
+  }
+  return {
+    idle: drawn(30, 26, (c) => {
+      body(c)
+      for (const x of [7, 10, 17, 20]) { px(c, x, 16, 2, 9, D); px(c, x, 25, 2, 1, '#2a1a10') }
+    }),
+    moving: [
+      drawn(30, 26, (c) => {
+        body(c)
+        px(c, 5, 16, 2, 9, D); px(c, 5, 25, 2, 1, '#2a1a10'); px(c, 11, 16, 2, 8, D); px(c, 11, 24, 2, 1, '#2a1a10')
+        px(c, 18, 16, 2, 8, D); px(c, 18, 24, 2, 1, '#2a1a10'); px(c, 22, 16, 2, 9, D); px(c, 22, 25, 2, 1, '#2a1a10')
+      }),
+    ],
+  }
+}
+
+// ---- Golden Savannah ----
+WILDLIFE_ART.zebra = () => {
+  const body = (c: Ctx) => {
+    ell(c, 13, 10, 8, 4, '#f4f4f0')
+    for (let x = 6; x <= 20; x += 3) for (let y = 6; y <= 14; y++) if (((x - 13) / 8) ** 2 + ((y - 10) / 4) ** 2 < 0.95) px(c, x, y, 1, 1, '#1a1a1a')
+    ell(c, 21, 6, 2, 4, '#f4f4f0'); ell(c, 24, 4, 3, 2, '#f4f4f0'); px(c, 26, 5, 2, 2, '#2a2a2a'); px(c, 24, 3, '#111111')
+    for (let y = 1; y < 8; y += 2) px(c, 20, y, 1, 1, '#1a1a1a') // mane
+    px(c, 23, 0, 1, 2, '#1a1a1a'); px(c, 25, 0, 1, 2, '#1a1a1a')
+    px(c, 4, 8, 1, 6, '#1a1a1a') // tail
+  }
+  return {
+    idle: drawn(30, 20, (c) => {
+      body(c)
+      for (const x of [7, 10, 17, 20]) { px(c, x, 14, 2, 6, '#f4f4f0'); px(c, x, 16, 2, 1, '#1a1a1a'); px(c, x, 19, 2, 1, '#2a2a2a') }
+    }),
+    moving: [
+      drawn(30, 20, (c) => {
+        body(c)
+        for (const [x, h] of [[5, 6], [11, 5], [18, 5], [22, 6]]) { px(c, x, 14, 2, h, '#f4f4f0'); px(c, x, 16, 2, 1, '#1a1a1a'); px(c, x, 13 + h, 2, 1, '#2a2a2a') }
+      }),
+    ],
+  }
+}
+WILDLIFE_ART.giraffe = () => {
+  const Y = '#d9a040'
+  const T = '#8a5a2a'
+  const body = (c: Ctx) => {
+    ell(c, 12, 20, 6, 4, Y)
+    for (const [x, y] of [[8, 18], [11, 21], [14, 18], [16, 21], [10, 19]]) px(c, x, y, 2, 2, T)
+    for (let i = 0; i < 14; i++) px(c, 16 + Math.floor(i / 6), 17 - i, 3, 1, Y) // long neck
+    for (const [x, y] of [[17, 14], [18, 10], [17, 7]]) px(c, x, y, 2, 2, T)
+    ell(c, 20, 4, 3, 2, Y); px(c, 22, 4, 3, 2, '#c89030'); px(c, 24, 4, '#222222'); px(c, 21, 3, '#111111')
+    px(c, 18, 0, 1, 2, T); px(c, 21, 0, 1, 2, T); px(c, 17, 1, 1, 1, '#c89030') // ears and horns
+    px(c, 6, 18, 1, 6, T) // tail
+  }
+  return {
+    idle: drawn(26, 32, (c) => {
+      body(c)
+      for (const x of [7, 10, 14, 17]) { px(c, x, 24, 2, 8, '#d9a040'); px(c, x, 31, 2, 1, '#3a2814'); px(c, x, 27, 2, 1, T) }
+    }),
+    moving: [
+      drawn(26, 32, (c) => {
+        body(c)
+        for (const [x, h] of [[5, 8], [11, 7], [13, 7], [19, 8]]) { px(c, x, 24, 2, h, '#d9a040'); px(c, x, 23 + h, 2, 1, '#3a2814') }
+      }),
+    ],
+  }
+}
+WILDLIFE_ART.elephant = () => {
+  const G = '#8a8a92'
+  const D = '#6a6a74'
+  const body = (c: Ctx, trunkUp: boolean) => {
+    ell(c, 15, 12, 10, 7, G); ell(c, 16, 15, 7, 3, '#9a9aa2')
+    ell(c, 26, 10, 5, 5, G)
+    ell(c, 23, 9, 3, 5, D); ell(c, 23, 9, 2, 3, '#9a9aa2') // ear
+    if (trunkUp) { px(c, 30, 8, 3, 3, G); px(c, 32, 4, 3, 5, G); px(c, 33, 3, 2, 2, D) }
+    else { px(c, 30, 12, 3, 4, G); px(c, 31, 16, 3, 6, D); px(c, 31, 21, 3, 1, G) }
+    px(c, 29, 14, 4, 1, '#f0ead8'); px(c, 31, 15, 2, 1, '#f0ead8') // tusk
+    px(c, 28, 8, '#111111')
+    px(c, 4, 10, 1, 6, D) // tail
+  }
+  const legs = (c: Ctx, xs: number[]) => { for (const x of xs) { px(c, x, 17, 4, 9, D); px(c, x, 25, 4, 1, '#cfcfd0') } }
+  return {
+    idle: drawn(36, 26, (c) => { body(c, false); legs(c, [7, 12, 19, 24]) }),
+    moving: [drawn(36, 26, (c) => { body(c, true); legs(c, [5, 13, 18, 25]) })],
+  }
+}
+
+// ---- Whispering Marsh ----
+WILDLIFE_ART.heron = () => {
+  const body = (c: Ctx, neckForward: boolean) => {
+    ell(c, 8, 16, 4, 4, '#9aa8b4'); ell(c, 7, 16, 3, 3, '#7a8a98'); px(c, 3, 18, 3, 1, '#5a6a78') // body, wing, tail
+    if (neckForward) { px(c, 11, 11, 5, 2, '#e8eef2'); px(c, 15, 9, 3, 2, '#e8eef2'); px(c, 17, 9, 2, 1, '#f0b840') }
+    else { px(c, 11, 8, 2, 8, '#e8eef2'); px(c, 12, 5, 3, 3, '#e8eef2'); px(c, 15, 6, 5, 1, '#f0b840'); px(c, 13, 6, '#111111') }
+    px(c, 8, 5, 5, 1, '#222222') // head plume
+  }
+  return {
+    idle: drawn(20, 30, (c) => {
+      body(c, false)
+      px(c, 7, 20, 1, 9, '#c9a050'); px(c, 10, 20, 1, 9, '#c9a050'); px(c, 6, 29, 3, 1, '#c9a050'); px(c, 9, 29, 3, 1, '#c9a050')
+    }),
+    moving: [
+      drawn(20, 30, (c) => {
+        body(c, true)
+        px(c, 7, 20, 1, 9, '#c9a050'); px(c, 6, 29, 3, 1, '#c9a050')
+        px(c, 11, 20, 1, 3, '#c9a050'); px(c, 12, 22, 1, 4, '#c9a050'); px(c, 13, 25, 2, 1, '#c9a050') // raised, stepping leg
+      }),
+    ],
+  }
+}
+WILDLIFE_ART.firefly = () => ({
+  idle: drawn(7, 7, (c) => { ell(c, 3, 3, 2, 2, '#3a5a28'); px(c, 2, 2, 3, 3, '#d8f060'); px(c, 3, 3, '#fffbd0') }),
+  moving: [
+    drawn(7, 7, (c) => { ell(c, 3, 3, 2, 2, '#3a5a28'); px(c, 2, 2, 3, 3, '#d8f060'); px(c, 3, 3, '#fffbd0') }),
+    drawn(7, 7, (c) => { px(c, 3, 3, '#6a8a30') }),
+  ],
+})
 
 const wildlifeCache = new Map<string, WildlifeFrames>()
 export function wildlifeFrames(id: string): WildlifeFrames {
@@ -462,7 +859,7 @@ export function worldSize(shape: WorldShape): WorldSize {
 
 // ---- Terrain ----
 
-import type { AreaTheme } from '../data/biomes'
+import { BIOMES, getBiome, type AreaTheme, type WaterStyle } from '../data/biomes'
 import { areaTerrain, bridgePoint, isOnWaterOrPath, pathYAt, streamXAt, type Terrain } from '../domain/terrain'
 
 type Rgb = [number, number, number]
@@ -471,6 +868,9 @@ const shift = (hex: string, [dr, dg, db]: Rgb) => {
   const c = (v: number) => Math.max(0, Math.min(255, v))
   return `#${[c((n >> 16) + dr), c(((n >> 8) & 255) + dg), c((n & 255) + db)].map((v) => v.toString(16).padStart(2, '0')).join('')}`
 }
+
+/** Extra decorations beyond the common set; each biome's themes choose their own mix. */
+interface Extras { drift?: number; spike?: number; twigs?: number; thorn?: number; mound?: number; crack?: number; mud?: number; reeds?: number; glow?: number }
 
 interface ThemeStyle {
   tint: Rgb // shifts the biome's grass palette
@@ -485,17 +885,41 @@ interface ThemeStyle {
   flowers: number
   flowerColors: string[]
   acorns: number
+  extra?: Extras
 }
 
 const FLOWERS = ['#f4e36b', '#f08fb2', '#ffffff', '#b9a0f0']
+const NONE = { colors: [] as string[], count: 0, kind: 'dot' as const }
+const base = (o: Partial<ThemeStyle>): ThemeStyle => ({ tint: [0, 0, 0], litter: NONE, rocks: 0, logs: 0, stumps: 0, tufts: 0, mushrooms: 0, rings: 0, ferns: 0, flowers: 0, flowerColors: FLOWERS, acorns: 0, ...o })
 
-/** Each area looks different even though all share the biome palette. Adding a theme is one entry here. */
+/** Each area looks different even though areas share their biome's palette. Adding a theme is one entry here. */
 const THEMES: Record<AreaTheme, ThemeStyle> = {
-  clearing: { tint: [0, 0, 0], litter: { colors: [], count: 0, kind: 'dot' }, rocks: 3, logs: 1, stumps: 1, tufts: 28, mushrooms: 2, rings: 0, ferns: 6, flowers: 40, flowerColors: FLOWERS, acorns: 0 },
-  oak: { tint: [10, -4, -12], litter: { colors: ['#a8662a', '#c98a3a', '#8a4a1e'], count: 170, kind: 'dot' }, rocks: 3, logs: 2, stumps: 2, tufts: 16, mushrooms: 3, rings: 0, ferns: 4, flowers: 8, flowerColors: ['#f4e36b', '#ffffff'], acorns: 12 },
-  pine: { tint: [-12, -6, 6], litter: { colors: ['#8a6a3a', '#6b4f2a', '#a8884e'], count: 220, kind: 'needle' }, rocks: 7, logs: 2, stumps: 1, tufts: 12, mushrooms: 2, rings: 0, ferns: 9, flowers: 4, flowerColors: ['#b9a0f0', '#ffffff'], acorns: 0 },
-  blossom: { tint: [14, 8, 6], litter: { colors: ['#ffd1e0', '#f08fb2', '#fff0f5'], count: 190, kind: 'petal' }, rocks: 2, logs: 1, stumps: 1, tufts: 24, mushrooms: 1, rings: 0, ferns: 3, flowers: 56, flowerColors: ['#f08fb2', '#ffd1e0', '#ffffff', '#f4e36b'], acorns: 0 },
-  ancient: { tint: [-18, -8, -14], litter: { colors: ['#3f6e2c', '#2f5e2a', '#4f7e34'], count: 130, kind: 'dot' }, rocks: 5, logs: 3, stumps: 3, tufts: 20, mushrooms: 8, rings: 1, ferns: 16, flowers: 6, flowerColors: ['#8fb8ff', '#b9a0f0'], acorns: 0 },
+  // Woodland Sanctuary
+  clearing: base({ rocks: 3, logs: 1, stumps: 1, tufts: 28, mushrooms: 2, ferns: 6, flowers: 40 }),
+  oak: base({ tint: [10, -4, -12], litter: { colors: ['#a8662a', '#c98a3a', '#8a4a1e'], count: 170, kind: 'dot' }, rocks: 3, logs: 2, stumps: 2, tufts: 16, mushrooms: 3, ferns: 4, flowers: 8, flowerColors: ['#f4e36b', '#ffffff'], acorns: 12 }),
+  pine: base({ tint: [-12, -6, 6], litter: { colors: ['#8a6a3a', '#6b4f2a', '#a8884e'], count: 220, kind: 'needle' }, rocks: 7, logs: 2, stumps: 1, tufts: 12, mushrooms: 2, ferns: 9, flowers: 4, flowerColors: ['#b9a0f0', '#ffffff'] }),
+  blossom: base({ tint: [14, 8, 6], litter: { colors: ['#ffd1e0', '#f08fb2', '#fff0f5'], count: 190, kind: 'petal' }, rocks: 2, logs: 1, stumps: 1, tufts: 24, mushrooms: 1, ferns: 3, flowers: 56, flowerColors: ['#f08fb2', '#ffd1e0', '#ffffff', '#f4e36b'] }),
+  ancient: base({ tint: [-18, -8, -14], litter: { colors: ['#3f6e2c', '#2f5e2a', '#4f7e34'], count: 130, kind: 'dot' }, rocks: 5, logs: 3, stumps: 3, tufts: 20, mushrooms: 8, rings: 1, ferns: 16, flowers: 6, flowerColors: ['#8fb8ff', '#b9a0f0'] }),
+  // Frozen Tundra
+  snowfield: base({ litter: { colors: ['#ffffff', '#cfe6f2'], count: 120, kind: 'petal' }, rocks: 3, tufts: 14, extra: { drift: 10, spike: 3, twigs: 6 } }),
+  frostwood: base({ litter: { colors: ['#c9d6dc', '#ffffff'], count: 100, kind: 'needle' }, rocks: 3, logs: 2, stumps: 2, tufts: 8, extra: { drift: 6, twigs: 10, spike: 2 } }),
+  glacier: base({ tint: [-8, -4, 4], litter: { colors: ['#ffffff', '#9fd4f0'], count: 100, kind: 'petal' }, rocks: 5, extra: { spike: 9, drift: 5, crack: 6 } }),
+  // Golden Savannah
+  plains: base({ litter: { colors: ['#a8903f', '#e0c97a', '#b89a48'], count: 160, kind: 'dot' }, rocks: 4, tufts: 40, flowers: 6, flowerColors: ['#f08fb2', '#f4e36b'], extra: { mound: 2, thorn: 4, crack: 6 } }),
+  acacia: base({ litter: { colors: ['#8a6a2a', '#c9a050'], count: 130, kind: 'dot' }, rocks: 3, tufts: 30, extra: { thorn: 6, mound: 1, crack: 4 } }),
+  baobab: base({ tint: [6, -6, -8], litter: { colors: ['#a0602a', '#c98040'], count: 150, kind: 'dot' }, rocks: 6, tufts: 22, extra: { mound: 3, crack: 10, thorn: 3 } }),
+  // Whispering Marsh
+  shallows: base({ litter: { colors: ['#3a5a2c', '#2f4a26', '#52743a'], count: 140, kind: 'dot' }, logs: 2, stumps: 1, tufts: 20, mushrooms: 2, ferns: 8, flowers: 10, flowerColors: ['#b9a0f0', '#ffffff', '#f4e36b'], extra: { mud: 6, reeds: 10, glow: 2 } }),
+  willowbend: base({ litter: { colors: ['#2f5a3a', '#46703c'], count: 150, kind: 'dot' }, logs: 3, stumps: 2, tufts: 14, mushrooms: 4, ferns: 12, extra: { mud: 5, reeds: 12, glow: 4 } }),
+  fen: base({ tint: [-8, -4, -6], litter: { colors: ['#2f5a3a', '#3f6e2c'], count: 150, kind: 'dot' }, logs: 3, stumps: 3, tufts: 12, mushrooms: 5, rings: 1, ferns: 14, extra: { mud: 8, reeds: 14, glow: 8 } }),
+}
+
+/** Per-biome ground colours and how its water is painted. */
+const LOOK: Record<WaterStyle, { blade: [string, string]; shore: string; edge: string; mid: string; hl: string; bank: string; snow: boolean }> = {
+  pond: { blade: ['#3f6e2c', '#7fb85a'], shore: '#b9a77a', edge: '#4d8fb0', mid: '#5aa3c6', hl: '#a8d8ee', bank: '#7a6a45', snow: false },
+  ice: { blade: ['#b8cbd6', '#ffffff'], shore: '#f4f9fb', edge: '#9ec6da', mid: '#c4e2ef', hl: '#ffffff', bank: '#e8f2f7', snow: true },
+  waterhole: { blade: ['#9a7a2a', '#e8cf7a'], shore: '#8a6a3a', edge: '#6a8a93', mid: '#7fa3ad', hl: '#b8d4d8', bank: '#8a6a3a', snow: false },
+  marsh: { blade: ['#2a4a30', '#5f9a4a'], shore: '#2f3d24', edge: '#365046', mid: '#44695a', hl: '#8ab8a0', bank: '#2f3d24', snow: false },
 }
 
 function ell(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, color: string) {
@@ -503,42 +927,45 @@ function ell(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, color: st
     for (let dx = -rx; dx <= rx; dx++) if ((dx * dx) / (rx * rx + 0.5) + (dy * dy) / (ry * ry + 0.5) <= 1) px(ctx, cx + dx, cy + dy, color)
 }
 
-function drawRock(ctx: Ctx, x: number, y: number, size: number) {
+function drawRock(ctx: Ctx, x: number, y: number, size: number, snow = false) {
   const rx = 3 + size * 2
   const ry = 2 + size
-  ell(ctx, x + 1, y + 1, rx, ry, '#2f4a22') // shadow
+  ell(ctx, x + 1, y + 1, rx, ry, snow ? '#9fb3c0' : '#2f4a22') // shadow
   ell(ctx, x, y, rx, ry, '#7d827a')
   ell(ctx, x - 1, y - 1, Math.max(1, rx - 2), Math.max(1, ry - 1), '#a4a89e')
   px(ctx, x - rx + 2, y - ry, '#cfd2c8', 2, 1)
-  px(ctx, x + 1, y - ry + 1, '#5f8a3a', 3, 1) // moss
+  if (snow) {
+    ell(ctx, x, y - ry + 1, rx - 1, 1, '#ffffff')
+    px(ctx, x - rx + 1, y - ry + 2, '#e6eff5', rx, 1)
+  } else px(ctx, x + 1, y - ry + 1, '#5f8a3a', 3, 1) // moss
 }
 
-function drawLog(ctx: Ctx, x: number, y: number, len: number) {
-  px(ctx, x - len / 2 + 1, y + 3, '#2f4a22', len, 1) // shadow
+function drawLog(ctx: Ctx, x: number, y: number, len: number, snow = false) {
+  px(ctx, x - len / 2 + 1, y + 3, snow ? '#9fb3c0' : '#2f4a22', len, 1) // shadow
   px(ctx, x - len / 2, y - 2, len, 5, '#6b4a2b')
   px(ctx, x - len / 2, y + 2, len, 1, '#4a321c')
   for (let i = 3; i < len - 3; i += 4) px(ctx, x - len / 2 + i, y - 1, 1, 2, '#4a321c') // bark
   ell(ctx, x - len / 2, y, 1, 3, '#c9a46a')
   px(ctx, x - len / 2, y, '#8a6a3a')
-  px(ctx, x - len / 2 + 3, y - 3, '#5f8a3a', 4, 1) // moss
-  px(ctx, x + len / 2 - 4, y - 3, '#5f8a3a', 2, 1)
+  px(ctx, x - len / 2 + 3, y - 3, snow ? '#ffffff' : '#5f8a3a', len - 5, 1) // moss, or snow
+  if (snow) px(ctx, x - len / 2 + 2, y - 4, '#ffffff', len - 7, 1)
 }
 
-function drawStump(ctx: Ctx, x: number, y: number) {
-  ell(ctx, x + 1, y + 1, 5, 2, '#2f4a22')
+function drawStump(ctx: Ctx, x: number, y: number, snow = false) {
+  ell(ctx, x + 1, y + 1, 5, 2, snow ? '#9fb3c0' : '#2f4a22')
   px(ctx, x - 4, y - 5, 8, 6, '#6b4a2b')
   px(ctx, x + 3, y - 5, 1, 6, '#4a321c')
   px(ctx, x - 5, y, 1, 1, '#4a321c')
   px(ctx, x + 4, y, 1, 1, '#4a321c')
-  ell(ctx, x, y - 5, 4, 2, '#c9a46a')
-  ell(ctx, x, y - 5, 2, 1, '#a8864e')
+  ell(ctx, x, y - 5, 4, 2, snow ? '#ffffff' : '#c9a46a')
+  ell(ctx, x, y - 5, 2, 1, snow ? '#e6eff5' : '#a8864e')
   px(ctx, x, y - 5, '#8a6a3a')
 }
 
-function drawTuft(ctx: Ctx, x: number, y: number, dark: string) {
-  px(ctx, x, y - 3, 1, 3, '#7fb85a')
+function drawTuft(ctx: Ctx, x: number, y: number, [dark, light]: [string, string]) {
+  px(ctx, x, y - 3, 1, 3, light)
   px(ctx, x - 2, y - 2, 1, 2, dark)
-  px(ctx, x + 2, y - 2, 1, 2, '#7fb85a')
+  px(ctx, x + 2, y - 2, 1, 2, light)
   px(ctx, x - 1, y - 1, 1, 1, dark)
 }
 
@@ -561,9 +988,9 @@ function drawAcorn(ctx: Ctx, x: number, y: number) {
   px(ctx, x, y - 1, 2, 1, '#5a3a1a')
 }
 
-function drawLilyPad(ctx: Ctx, x: number, y: number, flower: boolean) {
+function drawLilyPad(ctx: Ctx, x: number, y: number, flower: boolean, water = '#4d8fb0') {
   ell(ctx, x, y, 3, 2, '#3f8a3a')
-  px(ctx, x, y - 2, 1, 2, '#4d8fb0') // notch
+  px(ctx, x, y - 2, 1, 2, water) // notch
   px(ctx, x - 1, y - 1, 2, 1, '#6bb552')
   if (flower) {
     px(ctx, x + 1, y, 2, 2, '#f08fb2')
@@ -577,37 +1004,96 @@ function drawReed(ctx: Ctx, x: number, y: number, h: number) {
   px(ctx, x, y - h - 1, 1, 3, '#6b4a2b') // cattail
 }
 
+// ---- biome-specific decorations ----
+function drawDrift(ctx: Ctx, x: number, y: number, w: number) {
+  ell(ctx, x + 1, y + 1, w, 3, '#c5d6e0')
+  ell(ctx, x, y, w, 3, '#e6eff5')
+  ell(ctx, x - 2, y - 1, Math.max(2, w - 3), 2, '#ffffff')
+}
+function drawIceSpike(ctx: Ctx, x: number, y: number, h: number) {
+  for (let i = 0; i < h; i++) {
+    const w = Math.max(1, Math.round(((h - i) / h) * 4))
+    px(ctx, x - Math.floor(w / 2), y - i, w, 1, '#bfe8f8')
+    px(ctx, x - Math.floor(w / 2), y - i, 1, 1, '#ffffff')
+    px(ctx, x + Math.ceil(w / 2) - 1, y - i, 1, 1, '#8fc8e0')
+  }
+}
+function drawTwigs(ctx: Ctx, x: number, y: number) {
+  px(ctx, x, y, 5, 1, '#5a4a38')
+  px(ctx, x + 1, y - 1, 1, 1, '#5a4a38')
+  px(ctx, x + 3, y - 2, 1, 2, '#5a4a38')
+}
+function drawThorn(ctx: Ctx, x: number, y: number) {
+  ell(ctx, x + 1, y + 1, 5, 2, '#6a5a2a')
+  ell(ctx, x, y, 5, 3, '#4f6a2a')
+  ell(ctx, x - 1, y - 1, 3, 2, '#6f8a3a')
+  for (const dx of [-4, -1, 2, 4]) px(ctx, x + dx, y - 4, 1, 1, '#e8d8a0')
+}
+function drawMound(ctx: Ctx, x: number, y: number) {
+  ell(ctx, x, y, 6, 2, '#8a6a3a')
+  for (let i = 0; i < 8; i++) {
+    const w = Math.max(2, 8 - i)
+    px(ctx, x - Math.floor(w / 2), y - 2 - i, w, 1, '#b89260')
+    px(ctx, x + Math.ceil(w / 2) - 1, y - 2 - i, 1, 1, '#8a6a3a')
+  }
+}
+function drawCrack(ctx: Ctx, x: number, y: number) {
+  px(ctx, x, y, 3, 1, '#7a5a2a')
+  px(ctx, x + 3, y + 1, 3, 1, '#7a5a2a')
+  px(ctx, x + 6, y, 2, 1, '#7a5a2a')
+  px(ctx, x + 4, y + 2, 1, 2, '#7a5a2a')
+}
+function drawMud(ctx: Ctx, x: number, y: number) {
+  ell(ctx, x, y, 7, 3, '#33331f')
+  ell(ctx, x - 1, y - 1, 5, 2, '#44442a')
+  px(ctx, x - 3, y - 1, 2, 1, '#5a5a38')
+}
+function drawGlowShroom(ctx: Ctx, x: number, y: number) {
+  ell(ctx, x, y - 2, 4, 3, '#26504e') // soft glow
+  px(ctx, x, y - 1, 1, 2, '#cfe8e0')
+  ell(ctx, x, y - 2, 2, 1, '#8ff0d0')
+  px(ctx, x - 1, y - 3, '#e8fff6')
+}
+function drawFootprints(ctx: Ctx, x: number, y: number) {
+  px(ctx, x, y, 1, 2, '#5a3f22')
+  px(ctx, x + 3, y + 1, 1, 2, '#5a3f22')
+  px(ctx, x + 6, y, 1, 2, '#5a3f22')
+}
+
 /**
- * Terrain for one area: themed grass, leaf litter / needles / petals, a stream that runs from the pond and
- * crosses the path under a small bridge, a pond with lily pads and reeds, and scattered logs, rocks, stumps,
- * mushrooms and tufts. All layout comes from the area key, and the pond, stream and path come from the
- * shared terrain model that tree placement also reads, so trees stay out of the water.
+ * Terrain for one area. Layout (pond, stream, path) comes from the shared terrain model that tree placement
+ * and wildlife also read, so everything agrees about where the water is. The biome decides colours and how
+ * its water is painted (pond, frozen lake, muddy waterhole, murky marsh); the area theme decides decorations.
  */
 export function groundCanvas(
   areaKey: string,
   theme: AreaTheme,
   palette: { grass: string[]; path: string },
   shape: WorldShape = 'landscape',
+  biomeId = 'woodland',
 ): HTMLCanvasElement {
   const { w: W, h: H, tilesW, tilesH } = worldSize(shape)
   const [canvas, ctx] = makeCanvas(W, H)
   const style = THEMES[theme]
+  const biome = getBiome(biomeId) ?? BIOMES[0]
+  const kind = biome.terrain.water
+  const look = LOOK[kind]
   const t: Terrain = areaTerrain(areaKey)
   const rand = mulberry(hashString(`${areaKey}#ground`))
   const grass = palette.grass.map((g) => shift(g, style.tint))
-  const darkBlade = shift('#3f6e2c', style.tint)
+  const blade: [string, string] = [shift(look.blade[0], style.tint), look.blade[1]]
+  const extra = style.extra ?? {}
+  const snow = look.snow
 
-  // 1. grass tiles with blade flecks
+  // 1. ground tiles with blade flecks
   for (let ty = 0; ty < tilesH; ty++) {
     for (let tx = 0; tx < tilesW; tx++) {
       px(ctx, tx * TILE, ty * TILE, grass[Math.floor(rand() * grass.length)], TILE, TILE)
-      for (let i = 0; i < 7; i++) {
-        px(ctx, tx * TILE + Math.floor(rand() * TILE), ty * TILE + Math.floor(rand() * TILE), rand() > 0.5 ? darkBlade : '#7fb85a', 1, 2)
-      }
+      for (let i = 0; i < 7; i++) px(ctx, tx * TILE + Math.floor(rand() * TILE), ty * TILE + Math.floor(rand() * TILE), rand() > 0.5 ? blade[0] : blade[1], 1, 2)
     }
   }
 
-  // 2. themed ground cover: leaf litter, needles or petals
+  // 2. themed ground cover: leaf litter, needles, petals, sparkle or dry grass
   for (let i = 0; i < style.litter.count && style.litter.colors.length; i++) {
     const x = Math.floor(rand() * (W - 3))
     const y = Math.floor(rand() * (H - 3))
@@ -617,31 +1103,54 @@ export function groundCanvas(
     else px(ctx, x, y, 2, 2, c)
   }
 
-  // 3. stream, from the pond down to the bottom edge
+  const open = (x: number, y: number) => !isOnWaterOrPath(t, x, y, W, H) && x > 8 && y > 12 && x < W - 8 && y < H - 6
+  const scatter = (n: number | undefined, draw: (x: number, y: number) => void) => {
+    for (let placed = 0, tries = 0; placed < (n ?? 0) && tries < (n ?? 0) * 12; tries++) {
+      const x = Math.floor(rand() * W)
+      const y = Math.floor(rand() * H)
+      if (open(x, y)) {
+        draw(x, y)
+        placed++
+      }
+    }
+  }
+
+  // 3. ground-level patches that sit under everything else
+  scatter(extra.mud, (x, y) => drawMud(ctx, x, y))
+  scatter(extra.crack, (x, y) => drawCrack(ctx, x, y))
+
+  // 4. stream (a frozen creek in the tundra, murky in the marsh), from the pond down to the bottom edge
   const pondX = Math.round(t.pond.x * W)
   const pondY = Math.round(t.pond.y * H)
   for (let y = pondY; t.hasStream && y < H; y++) {
     const cx = Math.round(streamXAt(t, y / H) * W)
-    px(ctx, cx - 3, y, 1, 1, '#7a6a45')
-    px(ctx, cx + 3, y, 1, 1, '#7a6a45')
-    px(ctx, cx - 2, y, 5, 1, '#4d8fb0')
-    if (rand() > 0.82) px(ctx, cx - 1 + Math.floor(rand() * 3), y, 1, 1, '#a8d8ee')
+    px(ctx, cx - 3, y, 1, 1, look.bank)
+    px(ctx, cx + 3, y, 1, 1, look.bank)
+    px(ctx, cx - 2, y, 5, 1, look.edge)
+    if (rand() > 0.82) px(ctx, cx - 1 + Math.floor(rand() * 3), y, 1, 1, look.hl)
   }
 
-  // 4. pond with a sandy shore
-  ell(ctx, pondX, pondY, 30, 17, '#b9a77a')
-  ell(ctx, pondX, pondY, 28, 15, '#4d8fb0')
-  ell(ctx, pondX, pondY, 22, 10, '#5aa3c6')
-  for (const [dx, dy, len] of [[-12, -5, 7], [4, 4, 6], [-3, 8, 4], [14, -2, 4], [-16, 4, 3]]) px(ctx, pondX + dx, pondY + dy, '#a8d8ee', len, 1)
+  // 5. the pond / frozen lake / waterhole / marsh pool, sized by the biome
+  const rx = t.pondRx
+  const ry = t.pondRy
+  ell(ctx, pondX, pondY, rx, ry, look.shore)
+  ell(ctx, pondX, pondY, rx - 2, ry - 2, look.edge)
+  ell(ctx, pondX, pondY, Math.round(rx * 0.74), Math.round(ry * 0.6), look.mid)
+  const f = rx / 30 // scale decorations with the water
+  for (const [dx, dy, len] of [[-12, -5, 7], [4, 4, 6], [-3, 8, 4], [14, -2, 4], [-16, 4, 3]]) px(ctx, pondX + Math.round(dx * f), pondY + Math.round(dy * f), look.hl, len, 1)
 
-  // 5. main path, with the bridge where the stream crosses it
+  // 6. main path (packed snow, dirt, or a plank boardwalk in the marsh), with the bridge over any stream
   for (let x = 0; x < W; x++) {
     const py = Math.round(pathYAt(t, x / W) * H)
     px(ctx, x, py - 4, 1, 8, palette.path)
-    px(ctx, x, py - 4, 1, 1, '#8a6738')
-    px(ctx, x, py + 3, 1, 1, '#8a6738')
-    if (rand() > 0.9) px(ctx, x, py - 1 + Math.floor(rand() * 3), 1, 1, '#c9a46a')
-    if (rand() > 0.985) px(ctx, x, py + 4, 2, 1, '#7d827a') // pebbles on the verge
+    px(ctx, x, py - 4, 1, 1, shift(palette.path, [-30, -30, -30]))
+    px(ctx, x, py + 3, 1, 1, shift(palette.path, [-30, -30, -30]))
+    if (kind === 'marsh') {
+      if (x % 5 === 0) px(ctx, x, py - 4, 1, 8, '#4a3d26') // boardwalk plank seams
+    } else {
+      if (rand() > 0.9) px(ctx, x, py - 1 + Math.floor(rand() * 3), 1, 1, shift(palette.path, [30, 30, 30]))
+      if (rand() > 0.985) px(ctx, x, py + 4, 2, 1, '#7d827a') // pebbles on the verge
+    }
   }
   if (t.hasStream) {
     const { x: bx, y: by } = bridgePoint(t, W, H)
@@ -652,24 +1161,13 @@ export function groundCanvas(
     px(ctx, bx - 8, by + 5, 17, 1, '#3a2814')
   }
 
-  // 6. decorations, placed only on open ground (clear of water and path)
-  const open = (x: number, y: number) => !isOnWaterOrPath(t, x, y, W, H) && x > 8 && y > 12 && x < W - 8 && y < H - 6
-  const scatter = (n: number, draw: (x: number, y: number) => void) => {
-    for (let placed = 0, tries = 0; placed < n && tries < n * 12; tries++) {
-      const x = Math.floor(rand() * W)
-      const y = Math.floor(rand() * H)
-      if (open(x, y)) {
-        draw(x, y)
-        placed++
-      }
-    }
-  }
+  // 7. decorations, placed only on open ground (clear of water and path)
   scatter(style.ferns, (x, y) => drawFern(ctx, x, y))
   scatter(style.flowers, (x, y) => {
     px(ctx, x, y, style.flowerColors[Math.floor(rand() * style.flowerColors.length)], 2, 2)
-    px(ctx, x, y + 2, darkBlade, 1, 1)
+    px(ctx, x, y + 2, blade[0], 1, 1)
   })
-  scatter(style.tufts, (x, y) => drawTuft(ctx, x, y, darkBlade))
+  scatter(style.tufts, (x, y) => drawTuft(ctx, x, y, blade))
   scatter(style.acorns, (x, y) => drawAcorn(ctx, x, y))
   scatter(style.mushrooms, (x, y) => {
     drawMushroom(ctx, x, y, rand() > 0.6)
@@ -678,15 +1176,52 @@ export function groundCanvas(
   scatter(style.rings, (cx, cy) => {
     for (let a = 0; a < 7; a++) drawMushroom(ctx, Math.round(cx + Math.cos((a / 7) * Math.PI * 2) * 9), Math.round(cy + Math.sin((a / 7) * Math.PI * 2) * 5))
   })
-  scatter(style.rocks, (x, y) => drawRock(ctx, x, y, Math.floor(rand() * 3)))
-  scatter(style.logs, (x, y) => drawLog(ctx, x, y, 14 + Math.floor(rand() * 8)))
-  scatter(style.stumps, (x, y) => drawStump(ctx, x, y))
+  scatter(extra.drift, (x, y) => drawDrift(ctx, x, y, 5 + Math.floor(rand() * 5)))
+  scatter(extra.mound, (x, y) => drawMound(ctx, x, y))
+  scatter(extra.thorn, (x, y) => drawThorn(ctx, x, y))
+  scatter(extra.twigs, (x, y) => drawTwigs(ctx, x, y))
+  scatter(style.rocks, (x, y) => drawRock(ctx, x, y, Math.floor(rand() * 3), snow))
+  scatter(style.logs, (x, y) => drawLog(ctx, x, y, 14 + Math.floor(rand() * 8), snow))
+  scatter(style.stumps, (x, y) => drawStump(ctx, x, y, snow))
+  scatter(extra.spike, (x, y) => {
+    drawIceSpike(ctx, x - 4, y + 1, 6 + Math.floor(rand() * 3))
+    drawIceSpike(ctx, x, y, 10 + Math.floor(rand() * 4))
+    drawIceSpike(ctx, x + 4, y + 1, 5 + Math.floor(rand() * 3))
+  })
+  scatter(extra.reeds, (x, y) => {
+    for (let i = 0; i < 4; i++) drawReed(ctx, x + i * 2, y + (i % 2), 6 + ((i * 3) % 5))
+  })
+  scatter(extra.glow, (x, y) => drawGlowShroom(ctx, x, y))
 
-  // 7. pond life, drawn last so it sits on the water
-  for (const [dx, dy, flower] of [[-14, 2, true], [9, -5, false], [15, 5, true], [-3, 8, false], [-10, -6, false], [2, -1, true], [-18, -3, false]] as const) drawLilyPad(ctx, pondX + dx, pondY + dy, flower)
+  // 8. life on and around the water, drawn last so it sits on top
   const side = t.pond.x < 0.5 ? -1 : 1
-  for (let i = 0; i < 8; i++) drawReed(ctx, pondX + side * (-22 + i * 3) + (i % 2), pondY - 15 + (i % 3), 7 + (i % 3) * 2)
-  for (let i = 0; i < 5; i++) drawReed(ctx, pondX - side * (20 - i * 5), pondY + 15, 6 + (i % 2) * 2)
+  if (kind === 'pond') {
+    for (const [dx, dy, flower] of [[-14, 2, true], [9, -5, false], [15, 5, true], [-3, 8, false], [-10, -6, false], [2, -1, true], [-18, -3, false]] as const)
+      drawLilyPad(ctx, pondX + Math.round(dx * f), pondY + Math.round(dy * f), flower)
+    for (let i = 0; i < 8; i++) drawReed(ctx, pondX + side * (-22 + i * 3) + (i % 2), pondY - 15 + (i % 3), 7 + (i % 3) * 2)
+    for (let i = 0; i < 5; i++) drawReed(ctx, pondX - side * (20 - i * 5), pondY + 15, 6 + (i % 2) * 2)
+  } else if (kind === 'ice') {
+    // cracks across the ice, a few shards at the rim
+    for (const [dx, dy, len] of [[-14, -2, 9], [-4, 3, 12], [6, -4, 8], [12, 4, 7]]) {
+      px(ctx, pondX + Math.round(dx * f), pondY + dy, len, 1, '#8fb8cc')
+      px(ctx, pondX + Math.round(dx * f) + len - 2, pondY + dy + 1, 3, 1, '#8fb8cc')
+    }
+    for (let i = 0; i < 5; i++) drawIceSpike(ctx, pondX + Math.round((-30 + i * 14) * f), pondY + ry - 2 + (i % 2), 4 + (i % 3))
+  } else if (kind === 'waterhole') {
+    for (let i = 0; i < 4; i++) drawFootprints(ctx, pondX + Math.round((-26 + i * 16) * f), pondY + ry + 2 + (i % 2) * 3)
+    for (let i = 0; i < 5; i++) drawReed(ctx, pondX - side * (14 - i * 4), pondY - ry + 2, 5 + (i % 3) * 2)
+    px(ctx, pondX - 6, pondY, '#9fbcc0', 6, 1)
+  } else {
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.3
+      drawLilyPad(ctx, pondX + Math.round(Math.cos(a) * rx * 0.55), pondY + Math.round(Math.sin(a) * ry * 0.5), i % 4 === 0, look.edge)
+    }
+    for (let i = 0; i < 40; i++) px(ctx, pondX + Math.round((rand() - 0.5) * (rx * 1.6)), pondY + Math.round((rand() - 0.5) * (ry * 1.5)), '#6f9f4a', 2, 1) // duckweed
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2
+      drawReed(ctx, pondX + Math.round(Math.cos(a) * (rx - 1)), pondY + Math.round(Math.sin(a) * (ry - 1)) + 3, 6 + (i % 3) * 2)
+    }
+  }
   return canvas
 }
 

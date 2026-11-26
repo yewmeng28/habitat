@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react'
 import { wildlifeCanvas } from '../game/pixel'
 
 /** Wildlife sprite drawn with nearest-neighbour scaling. */
-export function WildlifePreview({ id, scale = 5, label }: { id: string; scale?: number; label: string }) {
+/** Sprites range from a firefly to an elephant, so the scale is chosen to fit a 72px box unless given. */
+export function WildlifePreview({ id, scale: given, label }: { id: string; scale?: number; label: string }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const sprite = wildlifeCanvas(id)
+  const scale = given ?? Math.max(1, Math.min(6, Math.floor(72 / Math.max(sprite.width, sprite.height))))
   useEffect(() => {
     const c = ref.current
     if (!c) return

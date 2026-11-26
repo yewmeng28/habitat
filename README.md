@@ -32,4 +32,4 @@ Notes:
 
 ## Status
 
-Phases 1 (habit tracker), 2 (focus timer, tree planting, Woodland Sanctuary) and 3 (collection, unlock rules, wildlife, achievements, forest overview) are implemented. Cloud sync and further biomes are planned.
+Phases 1 to 3 (habit tracker, focus and tree planting, collection and wildlife) and Phase 5 (Frozen Tundra, Golden Savannah and Whispering Marsh with biome unlocking and a world overview) are implemented. Phase 4 (cloud sync) is deferred, and the fantasy biomes are planned.

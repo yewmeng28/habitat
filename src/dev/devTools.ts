@@ -6,14 +6,14 @@ import { newBase } from '../persistence/repo'
  * Dev-only helpers behind /test. Everything goes through the real completeSession path,
  * so planted trees, rewards and area placement behave exactly like production.
  */
-export async function plantInstantly(speciesId: string, count: number, minutes = 25): Promise<number> {
+export async function plantInstantly(speciesId: string, count: number, minutes = 25, biomeId = 'woodland'): Promise<number> {
   let planted = 0
   for (let i = 0; i < count; i++) {
     const startedAt = new Date(Date.now() - minutes * 60_000 - 1000).toISOString()
     const session = {
       ...newBase(),
       speciesId,
-      biomeId: 'woodland',
+      biomeId,
       plannedSeconds: minutes * 60,
       startedAt,
       pausedAt: null,

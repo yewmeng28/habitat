@@ -1,3 +1,4 @@
+import { BIOMES } from '../data/biomes'
 import { ACHIEVEMENTS, DISCOVERY_POINTS, WILDLIFE } from '../data/collection'
 import { SPECIES } from '../data/species'
 import { countsFor, currentStreak, isScheduledOn } from './habits'
@@ -8,6 +9,7 @@ export interface Stats {
   hours: number
   trees: number
   treesBySpecies: Record<string, number>
+  treesByBiome: Record<string, number>
   maxAreaTrees: number
   speciesUnlocked: number
   bestHabitStreak: number
@@ -25,9 +27,11 @@ export interface StatsInput {
 export function computeStats(i: StatsInput): Stats {
   const done = i.sessions.filter((s) => s.status === 'completed')
   const treesBySpecies: Record<string, number> = {}
+  const treesByBiome: Record<string, number> = {}
   const perArea = new Map<string, number>()
   for (const t of i.trees) {
     treesBySpecies[t.speciesId] = (treesBySpecies[t.speciesId] ?? 0) + 1
+    treesByBiome[t.biomeId] = (treesByBiome[t.biomeId] ?? 0) + 1
     perArea.set(t.areaId, (perArea.get(t.areaId) ?? 0) + 1)
   }
   let bestHabitStreak = 0
@@ -40,6 +44,7 @@ export function computeStats(i: StatsInput): Stats {
     hours: done.reduce((s, x) => s + x.plannedSeconds, 0) / 3600,
     trees: i.trees.length,
     treesBySpecies,
+    treesByBiome,
     maxAreaTrees: Math.max(0, ...perArea.values()),
     speciesUnlocked: 0,
     bestHabitStreak,
@@ -63,6 +68,7 @@ export function ruleProgress(rule: Rule, st: Stats): RuleProgress {
     case 'hours': return mk(st.hours, rule.n)
     case 'trees': return mk(st.trees, rule.n)
     case 'species-trees': return mk(st.treesBySpecies[rule.speciesId] ?? 0, rule.n)
+    case 'biome-trees': return mk(st.treesByBiome[rule.biomeId] ?? 0, rule.n)
     case 'area-trees': return mk(st.maxAreaTrees, rule.n)
     case 'species-discovered': return mk(st.speciesUnlocked, rule.n)
     case 'habit-streak': return mk(st.bestHabitStreak, rule.n)
@@ -79,6 +85,7 @@ export function requirementText(rule: Rule): string {
     case 'hours': return `Focus for ${rule.n} hour${rule.n === 1 ? '' : 's'} in total`
     case 'trees': return `Plant ${rule.n} tree${rule.n === 1 ? '' : 's'}`
     case 'species-trees': return `Plant ${rule.n} ${speciesName(rule.speciesId)} trees`
+    case 'biome-trees': return `Plant ${rule.n} tree${rule.n === 1 ? '' : 's'} in the ${BIOMES.find((b) => b.id === rule.biomeId)?.name ?? rule.biomeId}`
     case 'area-trees': return `Grow ${rule.n} trees in one area`
     case 'species-discovered': return `Unlock ${rule.n} tree species`
     case 'habit-streak': return `Reach a ${rule.n}-day habit streak`
@@ -106,6 +113,7 @@ export function pendingDiscoveries(st: Stats, existing: Pick<Discovery, 'kind' |
   for (const s of SPECIES) consider('species', s.id, s.unlock)
   for (const w of WILDLIFE) consider('wildlife', w.id, w.unlock)
   for (const a of ACHIEVEMENTS) consider('achievement', a.id, a.unlock)
+  for (const b of BIOMES) consider('biome', b.id, b.unlockTrees === 0 ? { type: 'always' } : { type: 'trees', n: b.unlockTrees })
   return out
 }
 

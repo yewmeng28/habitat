@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { TreePreview } from '../../components/TreePreview'
-import { BIOMES } from '../../data/biomes'
+import { BIOMES, getBiome, isBiomeUnlocked, unlockedBiomes } from '../../data/biomes'
 import { SPECIES, getSpecies } from '../../data/species'
 import {
   MAX_MINUTES, MIN_MINUTES, PRESET_MINUTES, formatClock,
@@ -11,16 +11,22 @@ import { fromDateKey, toDateKey, todayKey } from '../../domain/dates'
 import type { FocusSession, PlantedTree } from '../../domain/types'
 import { computeStats, requirementText, ruleProgress } from '../../domain/progress'
 import { groundCanvas } from '../../game/pixel'
-import { useNow, type AppData } from '../../hooks'
+import { useNow, useSelectedBiome, type AppData } from '../../hooks'
 import {
   interruptSession, pauseSession, resumeSession, startSession,
 } from '../../persistence/focusRepo'
 
-// One terrain patch, rendered once and reused as the full-screen backdrop.
-let groundUrl: string | null = null
-function backdrop(): string {
-  if (!groundUrl) groundUrl = groundCanvas('focus-backdrop', 'clearing', BIOMES[0].palette, 'landscape').toDataURL()
-  return groundUrl
+// One terrain patch per biome, rendered once and reused as the full-screen backdrop: the first area of the
+// biome the tree is being planted in (snow in the tundra, golden plains in the savannah, and so on).
+const backdrops = new Map<string, string>()
+function backdrop(biomeId: string): string {
+  let url = backdrops.get(biomeId)
+  if (!url) {
+    const b = getBiome(biomeId) ?? BIOMES[0]
+    url = groundCanvas(`${b.id}:0`, b.areas[0].theme, b.palette, 'landscape', b.id).toDataURL()
+    backdrops.set(biomeId, url)
+  }
+  return url
 }
 
 /** Keeps the screen awake while a session is running, where the browser supports it. Failure is harmless. */
@@ -78,7 +84,7 @@ function RunningSession({ session, error, onPause, onResume, onGiveUp, onMinimis
   const stage = stageForProgress(p)
   const sp = getSpecies(session.speciesId)
   return (
-    <section className="focus-immersive" style={{ backgroundImage: `url(${backdrop()})` }} aria-label="Focus session">
+    <section className="focus-immersive" style={{ backgroundImage: `url(${backdrop(session.biomeId)})` }} aria-label="Focus session">
       <div className="focus-shade" />
       <div className="focus-center">
         <TreePreview speciesId={session.speciesId} stage={stage} scale={scale} label={`${sp?.name} ${stage}`} />
@@ -110,7 +116,15 @@ interface FocusPageProps {
 export function FocusPage({ data, planted, onDismissPlanted, onMinimise }: FocusPageProps) {
   const completed = data.focusSessions.filter((s) => s.status === 'completed')
   const open = data.focusSessions.find((s) => s.status === 'active' || s.status === 'paused')
-  const [speciesId, setSpeciesId] = useState('oak')
+  const [chosenSpecies, setSpeciesId] = useState('oak')
+  // Where the next tree goes: the biome you last chose, else the one you most recently planted in.
+  const totalTrees = data.plantedTrees.length
+  const unlockedIds = useMemo(() => unlockedBiomes(totalTrees).map((b) => b.id), [totalTrees])
+  const lastBiome = useMemo(() => [...data.plantedTrees].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.biomeId, [data.plantedTrees])
+  const [biomeId, selectBiome] = useSelectedBiome(unlockedIds, lastBiome && unlockedIds.includes(lastBiome) ? lastBiome : 'woodland')
+  const biome = getBiome(biomeId) ?? BIOMES[0]
+  const pool = SPECIES.filter((s) => s.biomes.includes(biome.id))
+  const speciesId = pool.some((s) => s.id === chosenSpecies) ? chosenSpecies : pool[0].id
   const [preset, setPreset] = useState<number>(25)
   const [custom, setCustom] = useState('')
   // What's shown is what's used: a non-empty custom field wins, otherwise the selected preset.
@@ -171,9 +185,21 @@ export function FocusPage({ data, planted, onDismissPlanted, onMinimise }: Focus
       )}
 
       <div className="card form">
+        <h2>Where to plant</h2>
+        <div className="chips" role="radiogroup" aria-label="Biome">
+          {BIOMES.map((b) => {
+            const open = isBiomeUnlocked(b, totalTrees)
+            return (
+              <button key={b.id} role="radio" aria-checked={b.id === biome.id} disabled={!open} className={`chip wide ${b.id === biome.id ? 'on' : ''}`} onClick={() => selectBiome(b.id)}>
+                {b.name}
+                {!open && <span className="small"> · {b.unlockTrees - totalTrees} trees to go</span>}
+              </button>
+            )
+          })}
+        </div>
         <h2>Choose a tree</h2>
         <div className="species-grid" role="radiogroup" aria-label="Tree species">
-          {SPECIES.map((sp) => {
+          {pool.map((sp) => {
             const unlocked = ruleProgress(sp.unlock, stats).met
             return (
               <button
@@ -211,8 +237,8 @@ export function FocusPage({ data, planted, onDismissPlanted, onMinimise }: Focus
         </div>
         {!minutesValid && <p className="error" role="alert">Enter a whole number of minutes from {MIN_MINUTES} to {MAX_MINUTES}.</p>}
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="btn primary big" disabled={!minutesValid} onClick={() => { onDismissPlanted(); run(() => startSession(speciesId, minutes)) }}>
-          Plant {getSpecies(speciesId)?.name}{minutesValid ? ` · ${minutes} min` : ''}
+        <button className="btn primary big" disabled={!minutesValid} onClick={() => { onDismissPlanted(); run(() => startSession(speciesId, minutes, biome.id)) }}>
+          Plant {getSpecies(speciesId)?.name} in {biome.name}{minutesValid ? ` · ${minutes} min` : ''}
         </button>
         <p className="muted small">Keep this app open or come back later: the timer follows the clock, not the screen. Giving up plants nothing but never harms the trees you already have.</p>
       </div>

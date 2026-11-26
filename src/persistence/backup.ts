@@ -81,7 +81,7 @@ const plantedTree = z.object({
 })
 const discovery = z.object({
   ...base,
-  kind: z.enum(['species', 'wildlife', 'achievement']),
+  kind: z.enum(['species', 'wildlife', 'achievement', 'biome']),
   itemId: z.string().min(1),
   points: z.number().min(0),
 })

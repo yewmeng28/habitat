@@ -67,6 +67,7 @@ describe('woodland placement', () => {
   })
 })
 
+import { areaDef } from '../data/biomes'
 import { areaTerrain, isBlocked, pathYAt, streamXAt } from './terrain'
 
 describe('terrain-aware placement', () => {
@@ -74,16 +75,17 @@ describe('terrain-aware placement', () => {
     expect(areaTerrain('woodland:0')).toEqual(areaTerrain('woodland:0'))
     expect(areaTerrain('woodland:0')).not.toEqual(areaTerrain('woodland:1'))
   })
-  it('never plants in the pond, across the stream or on the path', () => {
-    for (let a = 0; a < 8; a++) {
-      const id = `woodland:${a}`
-      const t = areaTerrain(id)
-      const capacity = a === 0 ? 12 : 25
-      for (let i = 0; i < capacity; i++) {
-        const p = slotPosition(id, i, capacity)
-        expect(isBlocked(t, p.x, p.y), `${id}#${i}`).toBe(false)
+  it('never plants in the pond, across the stream or on the path, in any biome', () => {
+    for (const b of BIOMES)
+      for (let a = 0; a < 7; a++) {
+        const id = `${b.id}:${a}`
+        const t = areaTerrain(id)
+        const capacity = areaDef(b, a).capacity
+        for (let i = 0; i < capacity; i++) {
+          const p = slotPosition(id, i, capacity)
+          expect(isBlocked(t, p.x, p.y), `${id}#${i}`).toBe(false)
+        }
       }
-    }
   })
   it('keeps the stream and path inside the world', () => {
     const t = areaTerrain('woodland:3')
@@ -106,31 +108,37 @@ describe('streams are only in some areas', () => {
     const t = areaTerrain('woodland:0')
     expect(t.pond.x === 0.2 || t.pond.x === 0.8).toBe(true)
   })
+  it('follows each biome’s water: bigger in the marsh, no stream on the savannah', () => {
+    expect(areaTerrain('marsh:0').pondRx).toBeGreaterThan(areaTerrain('savannah:0').pondRx)
+    for (let i = 0; i < 20; i++) expect(areaTerrain(`savannah:${i}`).hasStream).toBe(false)
+    expect(Array.from({ length: 20 }, (_, i) => areaTerrain(`marsh:${i}`).hasStream).filter(Boolean).length).toBeGreaterThan(8)
+  })
 })
 
 describe('trees stay out of the water (independent geometry check)', () => {
   // Re-derives the footprint test by brute-force sampling pixels, not by reusing isBlocked's maths.
   const shapes = [{ w: 320, h: 224 }, { w: 224, h: 384 }]
   const inPond = (t: ReturnType<typeof areaTerrain>, x: number, y: number, W: number, H: number) =>
-    ((x - t.pond.x * W) / 28) ** 2 + ((y - t.pond.y * H) / 15) ** 2 < 1
+    ((x - t.pond.x * W) / (t.pondRx - 2)) ** 2 + ((y - t.pond.y * H) / (t.pondRy - 2)) ** 2 < 1
   const inStream = (t: ReturnType<typeof areaTerrain>, x: number, y: number, W: number, H: number) =>
     t.hasStream && y > t.pond.y * H && Math.abs(x - streamXAt(t, y / H) * W) < 3
-  it('no sampled crown pixel is over the pond or stream, in either world shape', () => {
-    for (let a = 0; a < 7; a++) {
-      const id = `woodland:${a}`
-      const t = areaTerrain(id)
-      const capacity = a === 0 ? 12 : 25
-      for (let i = 0; i < capacity; i++) {
-        const p = slotPosition(id, i, capacity)
-        for (const { w, h } of shapes)
-          for (let dx = -10; dx <= 10; dx += 2)
-            for (let dy = -28; dy <= 0; dy += 2) {
-              const x = p.x * w + dx
-              const y = p.y * h + dy
-              expect(inPond(t, x, y, w, h) || inStream(t, x, y, w, h), `${id}#${i} ${w}x${h}`).toBe(false)
-            }
+  it('no sampled crown pixel is over the pond or stream, in either world shape or any biome', () => {
+    for (const b of BIOMES)
+      for (let a = 0; a < 5; a++) {
+        const id = `${b.id}:${a}`
+        const t = areaTerrain(id)
+        const capacity = areaDef(b, a).capacity
+        for (let i = 0; i < capacity; i++) {
+          const p = slotPosition(id, i, capacity)
+          for (const { w, h } of shapes)
+            for (let dx = -10; dx <= 10; dx += 2)
+              for (let dy = -28; dy <= 0; dy += 2) {
+                const x = p.x * w + dx
+                const y = p.y * h + dy
+                expect(inPond(t, x, y, w, h) || inStream(t, x, y, w, h), `${id}#${i} ${w}x${h}`).toBe(false)
+              }
+        }
       }
-    }
   })
   it('nudges a tree stored on the pond to clear ground, and leaves a clear one alone', async () => {
     const { resolvePosition } = await import('./terrain')
@@ -145,11 +153,11 @@ describe('trees stay out of the water (independent geometry check)', () => {
 
 import { mulberry32 } from './rng'
 import { bridgePoint, isInWater } from './terrain'
-import { dryBetween, dryPoint, hopTarget, shoreTarget, wet } from './wildlifeMove'
+import { dryBetween, dryPoint, hopTarget, shoreTarget, walkTarget, wet } from './wildlifeMove'
 
 describe('wildlife movement', () => {
   const sizes = [{ w: 320, h: 224 }, { w: 224, h: 384 }]
-  const areas = Array.from({ length: 10 }, (_, i) => `woodland:${i}`)
+  const areas = BIOMES.flatMap((b) => Array.from({ length: 6 }, (_, i) => `${b.id}:${i}`))
 
   it('knows where the water is, and treats the bridge as dry', () => {
     const t = areaTerrain('woodland:0')
@@ -179,6 +187,24 @@ describe('wildlife movement', () => {
     }
   })
 
+  it('big animals take long strides but never into or across water', () => {
+    const rand = mulberry32(5)
+    for (const id of areas) {
+      const t = areaTerrain(id)
+      for (const { w, h } of sizes) {
+        let p = dryPoint(t, w, h, rand)
+        for (let i = 0; i < 300; i++) {
+          const to = walkTarget(t, w, h, p, rand)
+          if (to) {
+            expect(wet(t, w, h, to), `${id} ${w}x${h} step ${i}`).toBe(false)
+            expect(dryBetween(t, w, h, p, to)).toBe(true)
+            p = to
+          }
+        }
+      }
+    }
+  })
+
   it('frogs stay on the shore of the pond, never in the water', () => {
     const rand = mulberry32(11)
     for (const id of areas) {
@@ -189,7 +215,7 @@ describe('wildlife movement', () => {
           const s = shoreTarget(t, w, h, angle, rand)
           angle = s.angle
           expect(wet(t, w, h, s), `${id} ${w}x${h} step ${i}`).toBe(false)
-          expect(Math.hypot((s.x - t.pond.x * w) / 30, (s.y - t.pond.y * h) / 17)).toBeLessThan(2.2)
+          expect(Math.hypot((s.x - t.pond.x * w) / t.pondRx, (s.y - t.pond.y * h) / t.pondRy)).toBeLessThan(2.2)
         }
       }
     }
