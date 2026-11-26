@@ -27,6 +27,9 @@ function describe(d: Discovery): string {
   return ACHIEVEMENTS.find((a) => a.id === d.itemId)?.name ?? d.itemId
 }
 
+/** A cog: the conventional settings symbol. */
+const SETTINGS_ICON = 'M18.69 9.93 L21.43 10.19 L21.43 13.81 L18.69 14.07 L18.19 15.27 L19.95 17.38 L17.38 19.95 L15.27 18.19 L14.07 18.69 L13.81 21.43 L10.19 21.43 L9.93 18.69 L8.73 18.19 L6.62 19.95 L4.05 17.38 L5.81 15.27 L5.31 14.07 L2.57 13.81 L2.57 10.19 L5.31 9.93 L5.81 8.73 L4.05 6.62 L6.62 4.05 L8.73 5.81 L9.93 5.31 L10.19 2.57 L13.81 2.57 L14.07 5.31 L15.27 5.81 L17.38 4.05 L19.95 6.62 L18.19 8.73ZM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z'
+
 const NAV = [
   { to: '/habitat', label: 'Habitat', icon: 'M12 3 4 20h16L12 3Zm0 6 4 8H8l4-8Z' },
   { to: '/growth', label: 'Growth', icon: 'M12 21V10m0 0c0-4 3-6 7-6 0 4-3 6-7 6Zm0 4c0-3-2-5-6-5 0 3 2 5 6 5Z' },
@@ -121,7 +124,7 @@ export default function App() {
         </nav>
         <NavLink to="/settings" className="nav-link nav-settings">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M3 12h3m12 0h3" />
+            <path d={SETTINGS_ICON} />
           </svg>
           <span>Settings</span>
         </NavLink>
@@ -136,7 +139,7 @@ export default function App() {
         <header className="topbar">
           <NavLink to="/settings" className="topbar-settings" aria-label="Settings">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M3 12h3m12 0h3" />
+              <path d={SETTINGS_ICON} />
             </svg>
           </NavLink>
           <div className="energy" title="Nature Energy">

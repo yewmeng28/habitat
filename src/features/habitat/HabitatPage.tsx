@@ -119,7 +119,8 @@ export function HabitatPage({ data }: { data: AppData }) {
         <div ref={host} className="game-host" aria-label="Your woodland. Drag to pan, scroll or pinch to zoom, tap a tree for details." />
         {phone && (
           <button className="area-chip" onClick={() => setSheetOpen(true)} aria-haspopup="dialog">
-            <strong>{areaName.name}</strong> · {areaTrees.length} tree{areaTrees.length === 1 ? '' : 's'} ▾
+            <strong>{areaName.name}</strong>
+            <span className="small muted">{areaTrees.length} tree{areaTrees.length === 1 ? '' : 's'} ▾</span>
           </button>
         )}
         {loadError && <p className="error pad">The woodland could not be loaded.</p>}
