@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react'
 import { TreePreview } from '../../components/TreePreview'
 import { WildlifePreview } from '../../components/WildlifePreview'
 import { BIOMES } from '../../data/biomes'
-import { ACHIEVEMENTS, WILDLIFE } from '../../data/collection'
+import { ACHIEVEMENTS, RARE_DISCOVERIES, WILDLIFE } from '../../data/collection'
 import { SPECIES } from '../../data/species'
 import { todayKey } from '../../domain/dates'
 import { computeStats, requirementText, ruleProgress, summarise } from '../../domain/progress'
 import type { Discovery, DiscoveryKind, Rule } from '../../domain/types'
 import type { AppData } from '../../hooks'
 
-type Tab = 'trees' | 'wildlife' | 'achievements' | 'biomes'
+type Tab = 'trees' | 'wildlife' | 'achievements' | 'biomes' | 'rare'
 
 function Card({ name, rarity, description, rule, found, stats, art }: {
   name: string; rarity?: string; description: string; rule: Rule; found?: Discovery
@@ -47,6 +47,7 @@ export function CollectionPage({ data }: { data: AppData }) {
   const unlockedSpecies = SPECIES.filter((s) => ruleProgress(s.unlock, stats).met).length
   const foundWildlife = WILDLIFE.filter((w) => ruleProgress(w.unlock, stats).met).length
   const foundAch = ACHIEVEMENTS.filter((a) => ruleProgress(a.unlock, stats).met).length
+  const foundRare = RARE_DISCOVERIES.filter((r) => ruleProgress(r.unlock, stats).met).length
   const foundBiomes = BIOMES.filter((b) => stats.trees >= b.unlockTrees).length
 
   const tabs: [Tab, string, string][] = [
@@ -54,6 +55,7 @@ export function CollectionPage({ data }: { data: AppData }) {
     ['wildlife', 'Wildlife', `${foundWildlife}/${WILDLIFE.length}`],
     ['achievements', 'Achievements', `${foundAch}/${ACHIEVEMENTS.length}`],
     ['biomes', 'Biomes', `${foundBiomes}/${BIOMES.length}`],
+    ['rare', 'Rare', `${foundRare}/${RARE_DISCOVERIES.length}`],
   ]
 
   return (
@@ -88,6 +90,10 @@ export function CollectionPage({ data }: { data: AppData }) {
         {tab === 'achievements' && ACHIEVEMENTS.map((a) => (
           <Card key={a.id} name={a.name} description={a.description} rule={a.unlock} found={found('achievement', a.id)} stats={stats}
             art={(locked) => <span className={`medal ${locked ? 'off' : ''}`} aria-hidden="true" />} />
+        ))}
+        {tab === 'rare' && RARE_DISCOVERIES.map((r) => (
+          <Card key={r.id} name={r.name} rarity="rare" description={r.description} rule={r.unlock} found={found('rare', r.id)} stats={stats}
+            art={(locked) => <span className={`medal rare ${locked ? 'off' : ''}`} aria-hidden="true" />} />
         ))}
         {tab === 'biomes' && BIOMES.map((b) => (
           <Card key={b.id} name={b.name} description={b.description} rule={b.unlockTrees === 0 ? { type: 'always' } : { type: 'trees', n: b.unlockTrees }} found={found('biome', b.id)} stats={stats}

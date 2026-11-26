@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { plantInstantly } from '../dev/devTools'
 import { BIOMES, areaDef, isBiomeUnlocked, unlockedBiomes } from '../data/biomes'
-import { ACHIEVEMENTS, WILDLIFE } from '../data/collection'
+import { ACHIEVEMENTS, RARE_DISCOVERIES, WILDLIFE } from '../data/collection'
 import { SPECIES } from '../data/species'
 import { computeStats, pendingDiscoveries, requirementText, ruleProgress } from '../domain/progress'
 import { HabitatDB, db, useDatabase } from './db'
@@ -14,8 +14,8 @@ beforeEach(() => useDatabase(new HabitatDB(`test-${crypto.randomUUID()}`)))
 describe('biome data', () => {
   it('has unique ids, rising thresholds, and the planned unlock counts', () => {
     expect(new Set(BIOMES.map((b) => b.id)).size).toBe(BIOMES.length)
-    expect(BIOMES.map((b) => b.unlockTrees)).toEqual([0, 15, 35, 60])
-    expect(BIOMES.map((b) => b.id)).toEqual(['woodland', 'tundra', 'savannah', 'marsh'])
+    expect(BIOMES.map((b) => b.unlockTrees)).toEqual([0, 15, 35, 60, 90, 130])
+    expect(BIOMES.map((b) => b.id)).toEqual(['woodland', 'tundra', 'savannah', 'marsh', 'skybound', 'fairy'])
     for (const b of BIOMES) {
       expect(b.areas.length).toBeGreaterThanOrEqual(3)
       expect(areaDef(b, b.areas.length + 4).capacity).toBeGreaterThan(0) // overflow areas exist
@@ -26,6 +26,9 @@ describe('biome data', () => {
     expect(isBiomeUnlocked(BIOMES[1], 14)).toBe(false)
     expect(unlockedBiomes(15).map((b) => b.id)).toEqual(['woodland', 'tundra'])
     expect(unlockedBiomes(60)).toHaveLength(4)
+    expect(unlockedBiomes(90).map((b) => b.id)).toContain('skybound')
+    expect(unlockedBiomes(129).map((b) => b.id)).not.toContain('fairy')
+    expect(unlockedBiomes(130)).toHaveLength(6)
   })
   it('gives every biome species, wildlife and an explorer achievement, all referring to real biomes', () => {
     const ids = new Set(BIOMES.map((b) => b.id))
@@ -36,6 +39,11 @@ describe('biome data', () => {
     for (const s of SPECIES) s.biomes.forEach((id) => expect(ids.has(id)).toBe(true))
     for (const w of WILDLIFE) expect(ids.has(w.biome)).toBe(true)
     for (const a of ACHIEVEMENTS) if (a.unlock.type === 'biome-trees') expect(ids.has(a.unlock.biomeId)).toBe(true)
+    const speciesIds = new Set(SPECIES.map((x) => x.id))
+    for (const r of RARE_DISCOVERIES) {
+      const parts = r.unlock.type === 'all' ? r.unlock.rules : [r.unlock]
+      for (const p of parts) if (p.type === 'species-trees') expect(speciesIds.has(p.speciesId), r.id).toBe(true)
+    }
   })
   it('writes readable requirements for per-biome rules', () => {
     expect(requirementText({ type: 'biome-trees', biomeId: 'marsh', n: 3 })).toBe('Plant 3 trees in the Whispering Marsh')
@@ -77,6 +85,39 @@ describe('planting across biomes', () => {
     await expect(startSession('frost-spruce', 15, 'tundra')).rejects.toThrow(/not unlocked/)
     await plantInstantly('snowy-pine', 3, 1, 'tundra')
     await expect(startSession('frost-spruce', 15, 'tundra')).resolves.toBeTruthy()
+  })
+})
+
+describe('fantasy biomes', () => {
+  it('opens Skybound Peaks at 90 trees and the Fairy Forest at 130', async () => {
+    await plantInstantly('oak', 89, 1)
+    await expect(startSession('cloudwood', 15, 'skybound')).rejects.toThrow(/not unlocked/)
+    await plantInstantly('oak', 1, 1)
+    const s = await startSession('cloudwood', 15, 'skybound')
+    const tree = await completeSession(s.id, Date.now() + 16 * 60_000)
+    expect(tree?.areaId).toBe('skybound:0')
+    // 91 trees now (the Skybound one counts toward the total); 129 is one short of the Fairy Forest
+    await plantInstantly('oak', 38, 1)
+    await expect(startSession('luminous-oak', 15, 'fairy')).rejects.toThrow(/not unlocked/)
+    await plantInstantly('oak', 1, 1)
+    await expect(startSession('luminous-oak', 15, 'fairy')).resolves.toBeTruthy()
+  })
+  it('discovers rare finds only when the right combination has been grown', async () => {
+    await plantInstantly('cherry-blossom', 4, 1)
+    expect((await syncDiscoveries()).map((d) => `${d.kind}:${d.itemId}`)).not.toContain('rare:blossom-grove')
+    await plantInstantly('cherry-blossom', 1, 1)
+    expect((await syncDiscoveries()).map((d) => `${d.kind}:${d.itemId}`)).toContain('rare:blossom-grove')
+    expect((await listDiscoveries()).find((d) => d.itemId === 'blossom-grove')?.points).toBe(40)
+  })
+  it('needs both parts of a combination, and shows one progress total', async () => {
+    await plantInstantly('cloudwood', 3, 1, 'skybound')
+    let st = await currentStats()
+    const bridge = RARE_DISCOVERIES.find((r) => r.id === 'sky-bridge')!
+    expect(ruleProgress(bridge.unlock, st)).toEqual({ met: false, current: 3, target: 6 })
+    await plantInstantly('crystal-spire', 3, 1, 'skybound')
+    st = await currentStats()
+    expect(ruleProgress(bridge.unlock, st).met).toBe(true)
+    expect(requirementText(bridge.unlock)).toBe('Plant 3 Cloudwood trees, and Plant 3 Crystal Spire trees')
   })
 })
 

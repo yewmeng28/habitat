@@ -4,6 +4,8 @@ export type AreaTheme =
   | 'snowfield' | 'frostwood' | 'glacier' // Frozen Tundra
   | 'plains' | 'acacia' | 'baobab' // Golden Savannah
   | 'shallows' | 'willowbend' | 'fen' // Whispering Marsh
+  | 'terrace' | 'crystal' | 'summit' // Skybound Peaks
+  | 'glade' | 'luminous' | 'moonlit' // Enchanted Fairy Forest
 
 export interface AreaDef {
   name: string
@@ -12,9 +14,9 @@ export interface AreaDef {
 }
 
 /** What the main body of water is, which changes how it is drawn and what the creatures do around it. */
-export type WaterStyle = 'pond' | 'ice' | 'waterhole' | 'marsh'
+export type WaterStyle = 'pond' | 'ice' | 'waterhole' | 'marsh' | 'sky' | 'spirit'
 /** Ambient effect drifting over the scene. */
-export type AmbientEffect = 'motes' | 'snow' | 'dust' | 'fog'
+export type AmbientEffect = 'motes' | 'snow' | 'dust' | 'fog' | 'clouds' | 'sparkles'
 
 export interface BiomeDef {
   id: string
@@ -26,7 +28,14 @@ export interface BiomeDef {
   overflowArea: { namePrefix: string; theme: AreaTheme; capacity: number }
   palette: { grass: string[]; path: string; accent: string }
   /** Size of the main water body (pixels, incl. shore), how often a stream exists, and how the water looks. */
-  terrain: { pondRx: number; pondRy: number; streamChance: number; water: WaterStyle }
+  terrain: {
+    pondRx: number
+    pondRy: number
+    streamChance: number
+    water: WaterStyle
+    /** A floating island: ground only inside an irregular shape, open sky all around. Trees and animals stay on it. */
+    floating?: boolean
+  }
   effect: AmbientEffect
 }
 
@@ -92,6 +101,36 @@ export const BIOMES: BiomeDef[] = [
     palette: { grass: ['#3f5a38', '#46633f', '#3a5233', '#4c6b44'], path: '#6b5a3a', accent: '#b8f0a0' },
     terrain: { pondRx: 42, pondRy: 24, streamChance: 0.8, water: 'marsh' },
     effect: 'fog',
+  },
+  {
+    id: 'skybound',
+    name: 'Skybound Peaks',
+    description: 'Floating islands in an endless sky, joined by rope bridges and cut by waterfalls that fall into the clouds.',
+    unlockTrees: 90,
+    areas: [
+      { name: 'Cloud Terrace', theme: 'terrace', capacity: 14 },
+      { name: 'Crystal Ledge', theme: 'crystal', capacity: 22 },
+      { name: 'Windward Summit', theme: 'summit', capacity: 22 },
+    ],
+    overflowArea: { namePrefix: 'High Reaches', theme: 'summit', capacity: 24 },
+    palette: { grass: ['#8fc07a', '#98c884', '#86b872', '#a0d08c'], path: '#c9c0b0', accent: '#bfe8ff' },
+    terrain: { pondRx: 30, pondRy: 16, streamChance: 0.7, water: 'sky', floating: true },
+    effect: 'clouds',
+  },
+  {
+    id: 'fairy',
+    name: 'Enchanted Fairy Forest',
+    description: 'Giant luminous trees, glowing flowers and drifting lights, where the forest seems to watch you back.',
+    unlockTrees: 130,
+    areas: [
+      { name: 'Glimmer Glade', theme: 'glade', capacity: 14 },
+      { name: 'Luminous Hollow', theme: 'luminous', capacity: 22 },
+      { name: 'Moonlit Court', theme: 'moonlit', capacity: 22 },
+    ],
+    overflowArea: { namePrefix: 'Deep Enchantment', theme: 'moonlit', capacity: 24 },
+    palette: { grass: ['#2f4a5e', '#365468', '#2b4256', '#3c5f74'], path: '#6a5a8a', accent: '#ffe08a' },
+    terrain: { pondRx: 34, pondRy: 19, streamChance: 0.6, water: 'spirit' },
+    effect: 'sparkles',
   },
 ]
 

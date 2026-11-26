@@ -16,21 +16,47 @@ export interface Terrain {
   phase: number
   /** Only some areas have a stream; chosen from the area id so every device agrees. */
   hasStream: boolean
+  /** A floating island (Skybound Peaks): ground only inside an irregular shape, open sky outside it. */
+  floating: boolean
+  land: { cx: number; cy: number; rx: number; ry: number; wobble: number; phase: number }
 }
 
 export function areaTerrain(areaKey: string): Terrain {
   const r = mulberry32(hash(`${areaKey}#terrain`))
   const biome = getBiome(parseAreaId(areaKey).biomeId) ?? BIOMES[0] // unknown keys (e.g. backdrops) use woodland
+  const floating = !!biome.terrain.floating
   const left = r() < 0.5
-  return {
-    pond: { x: left ? 0.2 : 0.8, y: 0.16 + r() * 0.12 },
+  const pondY = r()
+  const t: Terrain = {
+    // On a floating island the pond sits well inside the land rather than in a corner
+    pond: floating ? { x: left ? 0.34 : 0.66, y: 0.3 + pondY * 0.1 } : { x: left ? 0.2 : 0.8, y: 0.16 + pondY * 0.12 },
     pondRx: biome.terrain.pondRx,
     pondRy: biome.terrain.pondRy,
     pathY: 0.66 + r() * 0.12,
     pathAmp: 0.025 + r() * 0.02,
     phase: r() * Math.PI * 2,
-    hasStream: r() < biome.terrain.streamChance, // drawn last, so it never moves the pond or path
+    hasStream: r() < biome.terrain.streamChance,
+    floating,
+    land: { cx: 0.5, cy: 0.5, rx: 0.42, ry: 0.4, wobble: 0.05, phase: 0 },
   }
+  // drawn last, so adding these never moved the pond or path of any existing area
+  t.land.rx += r() * 0.03
+  t.land.wobble = 0.04 + r() * 0.03
+  t.land.phase = r() * Math.PI * 2
+  return t
+}
+
+/**
+ * Whether a normalised point is on the ground. Always true except on a floating island, where it follows a
+ * wobbly ellipse. `margin` shrinks the island (as a fraction of its radius) to keep things off the very edge.
+ */
+export function inLand(t: Terrain, nx: number, ny: number, margin = 0): boolean {
+  if (!t.floating) return true
+  const dx = (nx - t.land.cx) / t.land.rx
+  const dy = (ny - t.land.cy) / t.land.ry
+  const ang = Math.atan2(dy, dx)
+  const edge = 1 + t.land.wobble * Math.sin(3 * ang + t.land.phase) + t.land.wobble * 0.6 * Math.sin(5 * ang + t.land.phase * 1.7)
+  return Math.hypot(dx, dy) < edge - margin
 }
 
 export const pathYAt = (t: Terrain, x: number) => t.pathY + Math.sin(x * Math.PI * 2.4 + t.phase) * t.pathAmp
@@ -62,6 +88,7 @@ function treeBlockedIn(t: Terrain, nx: number, ny: number, W: number, H: number)
   for (let yy = y - CROWN_UP; t.hasStream && yy <= y; yy += 3) {
     if (yy > pondY && Math.abs(x - streamXAt(t, yy / H) * W) < CROWN_HALF + STREAM_HALF) return true
   }
+  if (t.floating && ![-CROWN_HALF * 0.7, 0, CROWN_HALF * 0.7].every((dx) => inLand(t, (x + dx) / W, y / H, 0.06))) return true // not at the edge of the island
   return Math.abs(y - pathYAt(t, nx) * H) < PATH_HALF // trunks never stand on the main path
 }
 
@@ -72,6 +99,7 @@ export function isBlocked(t: Terrain, nx: number, ny: number): boolean {
 
 /** Point test for ground decorations, in world pixels. */
 export function isOnWaterOrPath(t: Terrain, x: number, y: number, W: number, H: number): boolean {
+  if (t.floating && !inLand(t, x / W, y / H, 0.05)) return true // open sky: nothing is placed there
   const pondX = t.pond.x * W
   const pondY = t.pond.y * H
   if (((x - pondX) / (t.pondRx + 3)) ** 2 + ((y - pondY) / (t.pondRy + 3)) ** 2 < 1) return true
@@ -105,8 +133,9 @@ export function bridgePoint(t: Terrain, W: number, H: number): { x: number; y: n
   return { x: bx, y: by }
 }
 
-/** Open water (pond or stream) in world pixels. The bridge deck counts as dry. `margin` widens the water. */
+/** Open water (pond or stream), or open sky beyond a floating island, in world pixels. The bridge deck counts as dry. `margin` widens it. */
 export function isInWater(t: Terrain, x: number, y: number, W: number, H: number, margin = 0): boolean {
+  if (t.floating && !inLand(t, x / W, y / H, 0.02 + margin * 0.01)) return true // ground animals cannot step off the island
   const pondX = t.pond.x * W
   const pondY = t.pond.y * H
   if (((x - pondX) / (t.pondRx - 2 + margin)) ** 2 + ((y - pondY) / (t.pondRy - 2 + margin)) ** 2 < 1) return true

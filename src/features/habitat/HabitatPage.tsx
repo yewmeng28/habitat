@@ -73,7 +73,7 @@ export function HabitatPage({ data }: { data: AppData }) {
       wildlife: WILDLIFE.filter((w) => w.biome === biome.id && discovered.has(w.id)).map((w) => ({
         id: w.id,
         behaviour: w.behaviour,
-        count: Math.min(w.behaviour === 'walk' ? 2 : 3, 1 + Math.floor(areaTrees.length / 8)), // big animals need more room
+        count: Math.min(w.behaviour === 'walk' || w.behaviour === 'glide' ? 2 : 3, 1 + Math.floor(areaTrees.length / 8)), // big animals need more room
       })),
       // positions that would sit on water (older trees) are nudged for display only; records are never changed
       trees: areaTrees.map((t) => {

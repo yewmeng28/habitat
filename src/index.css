@@ -372,3 +372,9 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .focus-tree { display: flex; justify-content: center; }
 .focus-tree .tree-preview { height: min(var(--tree-h), 32dvh) !important; width: auto !important; aspect-ratio: 32 / 48; }
 .btn.glass { background: rgba(18, 28, 14, .82); -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* Five collection tabs: let them wrap instead of squeezing */
+.seg.wide { flex-wrap: wrap; }
+.seg.wide button { flex: 1 1 30%; }
+.medal.rare { background: #b890f0; border-color: #7a5ab8; }
+.medal.rare.off { background: var(--line); border-color: var(--line); }

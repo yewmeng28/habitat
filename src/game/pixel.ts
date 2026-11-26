@@ -454,6 +454,130 @@ SPECIES['marsh-willow'] = {
   },
 }
 
+// ---- Skybound Peaks and Enchanted Fairy Forest species ----
+SPECIES.cloudwood = {
+  // A slim trunk carrying a small, soft cloud for a crown, with a shaded flat underside.
+  leaf: ['#a8c4e0', '#e8f2fc', '#ffffff'],
+  soil: '#8a7a68',
+  draw(ctx, s) {
+    const th = Math.round(16 * s)
+    trunk(ctx, 16, 47, 2, th, '#9a8a78', '#6a5a4a')
+    const ty = 47 - th
+    const c = SPECIES.cloudwood.leaf
+    ell(ctx, 16, Math.round(ty + 1 * s), Math.max(3, Math.round(12 * s)), Math.max(1, Math.round(2 * s)), '#9ab8d8') // underside
+    blob(ctx, 16 - 8 * s, ty - 2 * s, 6 * s, c)
+    blob(ctx, 16 + 8 * s, ty - 2 * s, 6 * s, c)
+    blob(ctx, 16, ty - 7 * s, 9 * s, c)
+    blob(ctx, 16 - 3 * s, ty - 13 * s, 5 * s, c)
+  },
+}
+SPECIES['crystal-spire'] = {
+  // No leaves at all: tall, faceted crystals growing from a little rubble.
+  leaf: ['#5aa8d8', '#8fd8f8', '#e8fbff'],
+  soil: '#8a7a68',
+  draw(ctx, s) {
+    ell(ctx, 16, 46, Math.max(3, Math.round(8 * s)), 1, '#7a6a58')
+    const prism = (cx: number, h: number, w: number, lo: string, mid: string, hi: string) => {
+      for (let i = 0; i < h; i++) {
+        const tip = i > h - Math.max(2, Math.round(w * 0.8))
+        const ww = tip ? Math.max(1, w - (i - (h - Math.max(2, Math.round(w * 0.8)))) - 1) : w
+        px(ctx, cx - Math.floor(ww / 2), 46 - i, ww, 1, mid)
+        px(ctx, cx - Math.floor(ww / 2), 46 - i, 1, 1, hi)
+        px(ctx, cx + Math.ceil(ww / 2) - 1, 46 - i, 1, 1, lo)
+      }
+    }
+    prism(16, Math.max(5, Math.round(36 * s)), Math.max(3, Math.round(7 * s)), '#5aa8d8', '#8fd8f8', '#e8fbff')
+    prism(10, Math.max(3, Math.round(20 * s)), Math.max(2, Math.round(5 * s)), '#8a64c8', '#b890f0', '#f0e4ff')
+    prism(22, Math.max(3, Math.round(25 * s)), Math.max(2, Math.round(5 * s)), '#5aa8d8', '#9ae0fa', '#ffffff')
+    if (s > 0.8) for (const [x, y] of [[14, 12], [19, 20], [9, 30], [23, 26]]) px(ctx, x, y, '#ffffff')
+  },
+}
+SPECIES.skyroot = {
+  // Floats on its own scrap of island: a hanging rock, trailing roots and a shadow far below.
+  leaf: ['#2f8a78', '#4fb89a', '#9ae8c8'],
+  soil: '#8a7a68',
+  draw(ctx, s) {
+    ell(ctx, 16, 46, Math.max(3, Math.round(9 * s)), 1, '#2f4a3a') // shadow on the ground
+    const rockY = 47 - Math.round(11 * s)
+    const rw = Math.max(3, Math.round(8 * s))
+    for (let i = 0; i < 6; i++) px(ctx, 16 - Math.max(1, rw - i), rockY + i, Math.max(2, (rw - i) * 2), 1, i % 2 ? '#7a6a58' : '#8a7a68')
+    ell(ctx, 16, rockY, rw, 1, '#8fc07a')
+    for (const dx of [-3, 0, 3]) px(ctx, 16 + Math.round(dx * s), rockY + 6, 1, Math.max(2, Math.round(5 * s)), '#6a4a30') // hanging roots
+    const th = Math.round(11 * s)
+    trunk(ctx, 16, rockY, s < 0.6 ? 2 : 3, th, '#7a5a3a', '#523a24')
+    const ty = rockY - th
+    const c = SPECIES.skyroot.leaf
+    blob(ctx, 16 - 6 * s, ty, 5 * s, c)
+    blob(ctx, 16 + 6 * s, ty - 1 * s, 5 * s, c)
+    blob(ctx, 16, ty - 5 * s, 7 * s, c)
+    if (s > 0.6) for (const [dx, dy] of [[-6, -2], [3, -8], [7, -1], [-2, -9]]) px(ctx, 16 + dx * s, ty + dy * s, '#ff9ad8', 2, 2)
+  },
+}
+SPECIES['luminous-oak'] = {
+  // A giant oak whose leaves glow, with bright lights in the crown and glowing runes on the trunk.
+  leaf: ['#1f5a58', '#2f8a80', '#7fe8c8'],
+  soil: '#3a4a50',
+  draw(ctx, s) {
+    ell(ctx, 16, 46, Math.max(4, Math.round(13 * s)), 2, '#2a6a70') // glow on the ground
+    const th = Math.round(15 * s)
+    trunk(ctx, 16, 47, s < 0.6 ? 4 : 6, th, '#4a4a5a', '#2f2f3a')
+    if (s > 0.6) for (let i = 4; i < th - 2; i += 4) px(ctx, 15, 47 - i, 2, 1, '#7ff0ff') // runes
+    const ty = 47 - th
+    const c = SPECIES['luminous-oak'].leaf
+    blob(ctx, 16 - 9 * s, ty - 2 * s, 7 * s, c)
+    blob(ctx, 16 + 9 * s, ty - 2 * s, 7 * s, c)
+    blob(ctx, 16, ty - 9 * s, 11 * s, c)
+    blob(ctx, 16, ty - 17 * s, 7 * s, c)
+    if (s > 0.6) for (const [dx, dy] of [[-9, -4], [6, -8], [-3, -14], [9, -2], [0, -9], [-5, -1], [4, -17]]) px(ctx, 16 + dx * s, ty + dy * s, '#e8fff8', 2, 2)
+  },
+}
+SPECIES.moonwillow = {
+  // A silver-lavender weeping tree, each trailing frond tipped with a point of light.
+  leaf: ['#6a68a8', '#9a98d8', '#d8d4ff'],
+  soil: '#3a3a5a',
+  draw(ctx, s) {
+    const th = Math.round(14 * s)
+    trunk(ctx, 15, 47, s < 0.6 ? 3 : 4, th, '#5a5470', '#3a3450')
+    const ty = 47 - th
+    const c = SPECIES.moonwillow.leaf
+    blob(ctx, 17, ty - 4 * s, 9 * s, c)
+    blob(ctx, 17 - 6 * s, ty - 1 * s, 5 * s, c)
+    blob(ctx, 17 + 7 * s, ty - 2 * s, 5 * s, c)
+    for (const dx of [-14, -11, -8, -5, 2, 5, 8, 11, 14]) {
+      const x = Math.round(17 + dx * s)
+      const top = Math.round(ty - 1 * s + Math.abs(dx) * 0.1)
+      const len = Math.round((46 - top) * (0.5 + (Math.abs(dx) % 5) * 0.08))
+      px(ctx, x, top, 1, len, c[1])
+      px(ctx, x, top + len - 1, 1, 1, '#bff8ff') // glowing tip
+    }
+  },
+}
+SPECIES['lantern-tree'] = {
+  // A dark violet crown strung with glowing fruit that hangs like tiny lanterns.
+  leaf: ['#2a2050', '#4a3a80', '#7a68b8'],
+  soil: '#3a3050',
+  draw(ctx, s) {
+    const th = Math.round(15 * s)
+    trunk(ctx, 16, 47, s < 0.6 ? 3 : 4, th, '#4a3a58', '#2f2540')
+    const ty = 47 - th
+    const c = SPECIES['lantern-tree'].leaf
+    blob(ctx, 16 - 8 * s, ty - 1 * s, 6 * s, c)
+    blob(ctx, 16 + 8 * s, ty - 1 * s, 6 * s, c)
+    blob(ctx, 16, ty - 7 * s, 9 * s, c)
+    for (const dx of [-9, -4, 2, 8]) {
+      const x = Math.round(16 + dx * s)
+      const top = Math.round(ty + 2 * s)
+      const len = Math.max(2, Math.round((5 + (Math.abs(dx) % 4)) * s))
+      px(ctx, x, top, 1, len, '#6a5a40') // string
+      if (s > 0.4) {
+        ell(ctx, x, top + len + 1, 2, 2, '#a06020') // glow
+        px(ctx, x - 1, top + len, 2, 2, '#ffb040')
+        px(ctx, x, top + len, '#fff0a0')
+      }
+    }
+  },
+}
+
 // ---------- Wildlife ----------
 
 function fromRows(rows: string[], palette: Record<string, string>): HTMLCanvasElement {
@@ -536,6 +660,12 @@ const BIRD_MID = [
   '..............',
 ]
 
+/** The robin's pose and flight frames, recoloured (the Aurora Finch reuses them). */
+function birdFrames(pal: Record<string, string>): WildlifeFrames {
+  const [idle, up, mid, down] = [BIRD_IDLE, BIRD_UP, BIRD_MID, BIRD_DOWN].map((r) => fromRows(r, pal))
+  return { idle, moving: [up, mid, down, mid] }
+}
+
 function butterflyFrames(pal: Record<string, string>): WildlifeFrames {
   const open = ['....D.D....', 'WW...D...WW', 'WWWW.D.WWWW', 'WwwWWDWWwwW', '.WwwWDWwwW.', '..WWWDWWW..', '...WW.D.WW.', '.....D.....']
   const half = ['....D.D....', '.....D.....', '..WW.D.WW..', '..WwWDWwW..', '..WwWDWwW..', '...WWDWW...', '....WDW....', '.....D.....']
@@ -545,10 +675,8 @@ function butterflyFrames(pal: Record<string, string>): WildlifeFrames {
 }
 
 const WILDLIFE_ART: Record<string, () => WildlifeFrames> = {
-  songbird: () => ({
-    idle: fromRows(BIRD_IDLE, BIRD_PAL),
-    moving: [fromRows(BIRD_UP, BIRD_PAL), fromRows(BIRD_MID, BIRD_PAL), fromRows(BIRD_DOWN, BIRD_PAL), fromRows(BIRD_MID, BIRD_PAL)],
-  }),
+  songbird: () => birdFrames(BIRD_PAL),
+  'aurora-finch': () => birdFrames({ k: '#3a2a5a', B: '#4ad8c8', b: '#2a9a9a', R: '#ff6ad8', W: '#fff0a8', E: '#111111', Y: '#ffd060', L: '#c98a3a', w: '#8a6aff', t: '#4a2c88' }),
   butterfly: () => butterflyFrames({ W: '#f2a93b', w: '#fbe08a', D: '#3a2a1a' }),
   'blossom-butterfly': () => butterflyFrames({ W: '#e87aa8', w: '#ffd6e6', D: '#4a2a3a' }),
 
@@ -673,16 +801,15 @@ WILDLIFE_ART['arctic-fox'] = () => {
     ],
   }
 }
-WILDLIFE_ART.reindeer = () => {
-  const B = '#8a6a4a'
-  const D = '#6a4a30'
+/** A stag: used for the reindeer and, in glowing colours, the spirit stag. */
+function deerArt(B: string, D: string, chest: string, belly: string, antler: string): WildlifeFrames {
   const body = (c: Ctx) => {
-    ell(c, 13, 13, 8, 4, B); ell(c, 14, 15, 6, 2, '#a88a6a')
-    ell(c, 21, 10, 3, 4, '#e8e0d0') // pale chest and neck
+    ell(c, 13, 13, 8, 4, B); ell(c, 14, 15, 6, 2, belly)
+    ell(c, 21, 10, 3, 4, chest) // pale chest and neck
     ell(c, 24, 6, 3, 3, B); px(c, 26, 8, 3, 2, D); px(c, 28, 8, '#222222'); px(c, 25, 5, '#111111')
-    px(c, 4, 11, 2, 2, '#e8e0d0') // tail
+    px(c, 4, 11, 2, 2, chest) // tail
     // antlers
-    for (const [x, y, w, h] of [[22, 0, 1, 4], [21, 0, 1, 2], [20, 1, 1, 1], [24, 0, 1, 4], [25, 0, 1, 2], [26, 1, 1, 1], [23, 2, 3, 1]]) px(c, x, y, w, h, '#d8c8a0')
+    for (const [x, y, w, h] of [[22, 0, 1, 4], [21, 0, 1, 2], [20, 1, 1, 1], [24, 0, 1, 4], [25, 0, 1, 2], [26, 1, 1, 1], [23, 2, 3, 1]]) px(c, x, y, w, h, antler)
   }
   return {
     idle: drawn(30, 26, (c) => {
@@ -698,6 +825,9 @@ WILDLIFE_ART.reindeer = () => {
     ],
   }
 }
+
+WILDLIFE_ART.reindeer = () => deerArt('#8a6a4a', '#6a4a30', '#e8e0d0', '#a88a6a', '#d8c8a0')
+WILDLIFE_ART['spirit-stag'] = () => deerArt('#8ac8ff', '#5a8ac8', '#e8f8ff', '#b8e0ff', '#ffe9a0')
 
 // ---- Golden Savannah ----
 WILDLIFE_ART.zebra = () => {
@@ -797,6 +927,73 @@ WILDLIFE_ART.firefly = () => ({
   ],
 })
 
+
+// ---- Skybound Peaks ----
+WILDLIFE_ART['peak-goat'] = () => {
+  const W = '#f0eee8'
+  const S = '#c8c4bc'
+  const body = (c: Ctx) => {
+    ell(c, 11, 10, 6, 4, W); ell(c, 12, 12, 5, 2, S)
+    ell(c, 18, 7, 3, 3, W); px(c, 20, 8, 2, 2, S); px(c, 21, 8, '#222222'); px(c, 18, 6, '#111111')
+    px(c, 17, 2, 1, 3, '#5a4a3a'); px(c, 18, 1, 1, 2, '#5a4a3a'); px(c, 20, 2, 1, 3, '#5a4a3a'); px(c, 21, 1, 1, 2, '#5a4a3a') // curved horns
+    px(c, 20, 11, 1, 3, W) // beard
+    px(c, 4, 8, 2, 2, W)
+  }
+  return {
+    idle: drawn(24, 20, (c) => { body(c); for (const x of [6, 9, 13, 16]) { px(c, x, 13, 2, 6, W); px(c, x, 19, 2, 1, '#3a3028') } }),
+    moving: [drawn(24, 20, (c) => { body(c); for (const [x, h] of [[4, 5], [9, 6], [12, 6], [17, 5]]) { px(c, x, 13, 2, h, W); px(c, x, 12 + h, 2, 1, '#3a3028') } })],
+  }
+}
+WILDLIFE_ART['cloud-ray'] = () => {
+  const top = '#8ab8e8'
+  const edge = '#5a88c0'
+  const belly = '#e8f2ff'
+  return {
+    idle: drawn(30, 14, (c) => {
+      ell(c, 15, 7, 13, 3, top); ell(c, 15, 8, 10, 2, belly); ell(c, 15, 6, 6, 2, '#a8d0f4')
+      px(c, 3, 6, 4, 1, edge); px(c, 23, 6, 4, 1, edge)
+      px(c, 1, 8, 1, 1, '#ffffff'); px(c, 28, 8, 1, 1, '#ffffff')
+      px(c, 14, 11, 2, 3, top); px(c, 15, 13, 1, 1, edge) // tail
+      px(c, 19, 5, '#111111')
+    }),
+    moving: [
+      drawn(30, 14, (c) => { // wings swept down
+        ell(c, 15, 6, 8, 3, top); ell(c, 15, 7, 6, 2, belly)
+        px(c, 3, 8, 6, 2, top); px(c, 1, 10, 4, 1, edge); px(c, 21, 8, 6, 2, top); px(c, 25, 10, 4, 1, edge)
+        px(c, 14, 10, 2, 3, top); px(c, 19, 5, '#111111')
+      }),
+      drawn(30, 14, (c) => { // wings swept up
+        ell(c, 15, 8, 8, 3, top); ell(c, 15, 9, 6, 2, belly)
+        px(c, 3, 4, 6, 2, top); px(c, 1, 2, 4, 1, edge); px(c, 21, 4, 6, 2, top); px(c, 25, 2, 4, 1, edge)
+        px(c, 14, 11, 2, 3, top); px(c, 19, 7, '#111111')
+      }),
+    ],
+  }
+}
+
+// ---- Enchanted Fairy Forest ----
+WILDLIFE_ART.pixie = () => {
+  const person = (c: Ctx) => {
+    ell(c, 5, 3, 2, 2, '#ffe0c8') // head
+    px(c, 3, 1, 5, 2, '#ff8ad8'); px(c, 7, 2, 1, 3, '#ff8ad8') // hair
+    px(c, 4, 3, '#111111'); px(c, 6, 3, '#111111')
+    px(c, 4, 5, 3, 3, '#7ff0ff'); px(c, 3, 8, 5, 1, '#7ff0ff') // dress
+    px(c, 4, 9, 1, 2, '#ffe0c8'); px(c, 6, 9, 1, 2, '#ffe0c8')
+  }
+  return {
+    idle: drawn(11, 12, (c) => {
+      ell(c, 5, 6, 5, 5, '#3a4a6a') // soft glow
+      person(c)
+      px(c, 0, 3, 4, 4, '#dff8ff'); px(c, 7, 3, 4, 4, '#dff8ff'); px(c, 1, 4, 2, 2, '#ffffff'); px(c, 8, 4, 2, 2, '#ffffff')
+    }),
+    moving: [
+      drawn(11, 12, (c) => { ell(c, 5, 6, 5, 5, '#3a4a6a'); person(c); px(c, 0, 3, 4, 4, '#dff8ff'); px(c, 7, 3, 4, 4, '#dff8ff'); px(c, 1, 4, 2, 2, '#ffffff'); px(c, 8, 4, 2, 2, '#ffffff') }),
+      drawn(11, 12, (c) => { ell(c, 5, 6, 5, 5, '#3a4a6a'); person(c); px(c, 2, 2, 2, 5, '#dff8ff'); px(c, 7, 2, 2, 5, '#dff8ff') }),
+    ],
+  }
+}
+WILDLIFE_ART['luna-moth'] = () => butterflyFrames({ W: '#b8f0c8', w: '#e8fff0', D: '#f0f0d0' })
+
 const wildlifeCache = new Map<string, WildlifeFrames>()
 export function wildlifeFrames(id: string): WildlifeFrames {
   let f = wildlifeCache.get(id)
@@ -860,7 +1057,7 @@ export function worldSize(shape: WorldShape): WorldSize {
 // ---- Terrain ----
 
 import { BIOMES, getBiome, type AreaTheme, type WaterStyle } from '../data/biomes'
-import { areaTerrain, bridgePoint, isOnWaterOrPath, pathYAt, streamXAt, type Terrain } from '../domain/terrain'
+import { areaTerrain, bridgePoint, inLand, isOnWaterOrPath, pathYAt, streamXAt, type Terrain } from '../domain/terrain'
 
 type Rgb = [number, number, number]
 const shift = (hex: string, [dr, dg, db]: Rgb) => {
@@ -870,7 +1067,7 @@ const shift = (hex: string, [dr, dg, db]: Rgb) => {
 }
 
 /** Extra decorations beyond the common set; each biome's themes choose their own mix. */
-interface Extras { drift?: number; spike?: number; twigs?: number; thorn?: number; mound?: number; crack?: number; mud?: number; reeds?: number; glow?: number }
+interface Extras { drift?: number; spike?: number; twigs?: number; thorn?: number; mound?: number; crack?: number; mud?: number; reeds?: number; glow?: number; crystal?: number; glowflower?: number; lights?: number }
 
 interface ThemeStyle {
   tint: Rgb // shifts the biome's grass palette
@@ -912,6 +1109,14 @@ const THEMES: Record<AreaTheme, ThemeStyle> = {
   shallows: base({ litter: { colors: ['#3a5a2c', '#2f4a26', '#52743a'], count: 140, kind: 'dot' }, logs: 2, stumps: 1, tufts: 20, mushrooms: 2, ferns: 8, flowers: 10, flowerColors: ['#b9a0f0', '#ffffff', '#f4e36b'], extra: { mud: 6, reeds: 10, glow: 2 } }),
   willowbend: base({ litter: { colors: ['#2f5a3a', '#46703c'], count: 150, kind: 'dot' }, logs: 3, stumps: 2, tufts: 14, mushrooms: 4, ferns: 12, extra: { mud: 5, reeds: 12, glow: 4 } }),
   fen: base({ tint: [-8, -4, -6], litter: { colors: ['#2f5a3a', '#3f6e2c'], count: 150, kind: 'dot' }, logs: 3, stumps: 3, tufts: 12, mushrooms: 5, rings: 1, ferns: 14, extra: { mud: 8, reeds: 14, glow: 8 } }),
+  // Skybound Peaks
+  terrace: base({ litter: { colors: ['#ffffff', '#e6f2ff'], count: 90, kind: 'petal' }, rocks: 3, tufts: 16, flowers: 16, flowerColors: ['#ffffff', '#bfe8ff', '#f4e36b'], extra: { crystal: 2 } }),
+  crystal: base({ tint: [-4, -2, 8], rocks: 4, tufts: 10, flowers: 6, flowerColors: ['#d6f0ff', '#e8d6ff'], extra: { crystal: 9 } }),
+  summit: base({ tint: [-10, -4, 4], rocks: 9, tufts: 8, flowers: 4, flowerColors: ['#ffffff'], extra: { crystal: 4, drift: 4 } }),
+  // Enchanted Fairy Forest
+  glade: base({ litter: { colors: ['#3a6272', '#44707e'], count: 45, kind: 'dot' }, tufts: 20, ferns: 6, extra: { glowflower: 26, lights: 12, glow: 4 } }),
+  luminous: base({ tint: [-4, 2, 4], litter: { colors: ['#3f7080', '#4a8290'], count: 55, kind: 'dot' }, tufts: 14, ferns: 8, mushrooms: 2, extra: { glow: 10, glowflower: 18, lights: 16, crystal: 3 } }),
+  moonlit: base({ tint: [-6, -4, 10], litter: { colors: ['#55558f', '#6a6aa8'], count: 50, kind: 'petal' }, tufts: 10, rings: 1, extra: { glow: 8, glowflower: 22, lights: 20, crystal: 5 } }),
 }
 
 /** Per-biome ground colours and how its water is painted. */
@@ -920,6 +1125,8 @@ const LOOK: Record<WaterStyle, { blade: [string, string]; shore: string; edge: s
   ice: { blade: ['#b8cbd6', '#ffffff'], shore: '#f4f9fb', edge: '#9ec6da', mid: '#c4e2ef', hl: '#ffffff', bank: '#e8f2f7', snow: true },
   waterhole: { blade: ['#9a7a2a', '#e8cf7a'], shore: '#8a6a3a', edge: '#6a8a93', mid: '#7fa3ad', hl: '#b8d4d8', bank: '#8a6a3a', snow: false },
   marsh: { blade: ['#2a4a30', '#5f9a4a'], shore: '#2f3d24', edge: '#365046', mid: '#44695a', hl: '#8ab8a0', bank: '#2f3d24', snow: false },
+  sky: { blade: ['#6fa060', '#c8e8b0'], shore: '#f2f8ff', edge: '#9ed0f0', mid: '#c4e6fa', hl: '#ffffff', bank: '#dfeaf2', snow: false },
+  spirit: { blade: ['#223c52', '#35687a'], shore: '#4a4a7a', edge: '#2f6a8a', mid: '#4aa0b8', hl: '#bff8ff', bank: '#4a4a7a', snow: false },
 }
 
 function ell(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, color: string) {
@@ -1060,6 +1267,46 @@ function drawFootprints(ctx: Ctx, x: number, y: number) {
   px(ctx, x + 6, y, 1, 2, '#5a3f22')
 }
 
+function drawCrystal(ctx: Ctx, x: number, y: number, h: number, hue: 'cyan' | 'violet') {
+  const [lo, mid, hi] = hue === 'cyan' ? ['#5aa8d8', '#8fd8f8', '#e8fbff'] : ['#8a64c8', '#b890f0', '#f0e4ff']
+  ell(ctx, x + 2, y + 1, 5, 2, '#2f4a3a') // shadow
+  for (const [dx, hh, w] of [[-4, Math.round(h * 0.6), 3], [0, h, 4], [4, Math.round(h * 0.45), 3]]) {
+    for (let i = 0; i < hh; i++) {
+      const tip = i > hh - 3
+      const ww = tip ? Math.max(1, w - (i - (hh - 3)) - 1) : w
+      px(ctx, x + dx - Math.floor(ww / 2), y - i, ww, 1, mid)
+      px(ctx, x + dx - Math.floor(ww / 2), y - i, 1, 1, hi)
+      px(ctx, x + dx + Math.ceil(ww / 2) - 1, y - i, 1, 1, lo)
+    }
+  }
+}
+function drawGlowFlower(ctx: Ctx, x: number, y: number, color: string) {
+  px(ctx, x, y, 1, 3, '#2f6a60')
+  ell(ctx, x, y - 1, 3, 2, shift(color, [-110, -110, -110])) // soft halo
+  px(ctx, x - 1, y - 2, 3, 2, color)
+  px(ctx, x, y - 2, '#ffffff')
+}
+function drawFairyLight(ctx: Ctx, x: number, y: number) {
+  px(ctx, x - 1, y, 3, 1, '#6a5a2a')
+  px(ctx, x, y - 1, 1, 3, '#6a5a2a')
+  px(ctx, x, y, '#fff6b0')
+}
+function drawCloudPuff(ctx: Ctx, x: number, y: number, s: number) {
+  ell(ctx, x, y + 1, 9 * s, 3 * s, '#d4e6f4')
+  ell(ctx, x - 4 * s, y - 1, 5 * s, 3 * s, '#ffffff')
+  ell(ctx, x + 4 * s, y, 6 * s, 3 * s, '#ffffff')
+  ell(ctx, x, y - 2 * s, 5 * s, 3 * s, '#f4faff')
+}
+/** A small floating islet: a grassy lens on a hanging chunk of rock. */
+function drawIslet(ctx: Ctx, x: number, y: number, rx: number, grass: string) {
+  for (let dy = 0; dy < 12; dy++) {
+    const w = Math.round(rx * (1 - dy / 14))
+    px(ctx, x - w, y + 2 + dy, w * 2, 1, dy % 3 === 0 ? '#8a7a68' : '#7a6a58')
+  }
+  ell(ctx, x, y, rx, 3, grass)
+  ell(ctx, x - 1, y - 1, rx - 3, 2, shift(grass, [14, 14, 14]))
+}
+
 /**
  * Terrain for one area. Layout (pond, stream, path) comes from the shared terrain model that tree placement
  * and wildlife also read, so everything agrees about where the water is. The biome decides colours and how
@@ -1084,12 +1331,43 @@ export function groundCanvas(
   const blade: [string, string] = [shift(look.blade[0], style.tint), look.blade[1]]
   const extra = style.extra ?? {}
   const snow = look.snow
+  const floating = t.floating
+  // On a floating island only the island itself is ground. Everything else is open sky.
+  const onLand = (x: number, y: number) => !floating || inLand(t, (x + 0.5) / W, (y + 0.5) / H)
+
+  if (floating) {
+    // sky: soft vertical bands, drifting clouds, and a couple of distant islets joined by the rope bridge
+    const bands = ['#7fc4f2', '#8fd0f8', '#a4daf9', '#b8e3fa', '#cdecfb', '#dff4fd']
+    bands.forEach((c, i) => px(ctx, 0, Math.floor((i * H) / bands.length), W, Math.ceil(H / bands.length) + 1, c))
+    for (let i = 0; i < 9; i++) drawCloudPuff(ctx, Math.floor(rand() * W), Math.floor(rand() * H), 1 + Math.floor(rand() * 2))
+    drawIslet(ctx, 10, Math.round(pathYAt(t, 0.03) * H) - 3, 13, grass[0])
+    drawIslet(ctx, W - 10, Math.round(pathYAt(t, 0.97) * H) - 3, 13, grass[1])
+  }
 
   // 1. ground tiles with blade flecks
-  for (let ty = 0; ty < tilesH; ty++) {
-    for (let tx = 0; tx < tilesW; tx++) {
-      px(ctx, tx * TILE, ty * TILE, grass[Math.floor(rand() * grass.length)], TILE, TILE)
-      for (let i = 0; i < 7; i++) px(ctx, tx * TILE + Math.floor(rand() * TILE), ty * TILE + Math.floor(rand() * TILE), rand() > 0.5 ? blade[0] : blade[1], 1, 2)
+  const tileCols = Array.from({ length: tilesW * tilesH }, () => grass[Math.floor(rand() * grass.length)])
+  if (floating) {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (onLand(x, y)) px(ctx, x, y, tileCols[Math.floor(y / TILE) * tilesW + Math.floor(x / TILE)], 1, 1)
+    for (let i = 0; i < tilesW * tilesH * 7; i++) {
+      const x = Math.floor(rand() * W)
+      const y = Math.floor(rand() * H)
+      if (onLand(x, y)) px(ctx, x, y, rand() > 0.5 ? blade[0] : blade[1], 1, 2)
+    }
+    // the island's underside: layered rock that tapers away below the grass, with a few hanging stalactites
+    for (let x = 0; x < W; x++) {
+      let bottom = -1
+      for (let y = H - 1; y >= 0; y--) if (onLand(x, y)) { bottom = y; break }
+      if (bottom < 0) continue
+      const depth = Math.round(8 + 22 * (1 - Math.abs(x / W - t.land.cx) / t.land.rx) + (rand() > 0.93 ? 8 : 0))
+      for (let k = 1; k <= depth; k++) px(ctx, x, bottom + k, 1, 1, k < 3 ? '#a89888' : k % 5 === 0 ? '#6a5a4a' : k % 2 ? '#8a7a68' : '#7a6a58')
+      px(ctx, x, bottom, 1, 1, '#9aa070') // grassy lip
+    }
+  } else {
+    for (let ty = 0; ty < tilesH; ty++) {
+      for (let tx = 0; tx < tilesW; tx++) {
+        px(ctx, tx * TILE, ty * TILE, tileCols[ty * tilesW + tx], TILE, TILE)
+        for (let i = 0; i < 7; i++) px(ctx, tx * TILE + Math.floor(rand() * TILE), ty * TILE + Math.floor(rand() * TILE), rand() > 0.5 ? blade[0] : blade[1], 1, 2)
+      }
     }
   }
 
@@ -1097,6 +1375,7 @@ export function groundCanvas(
   for (let i = 0; i < style.litter.count && style.litter.colors.length; i++) {
     const x = Math.floor(rand() * (W - 3))
     const y = Math.floor(rand() * (H - 3))
+    if (!onLand(x, y)) continue
     const c = style.litter.colors[Math.floor(rand() * style.litter.colors.length)]
     if (style.litter.kind === 'needle') px(ctx, x, y, 2 + Math.floor(rand() * 2), 1, c)
     else if (style.litter.kind === 'petal') px(ctx, x, y, 2, 1, c)
@@ -1124,6 +1403,12 @@ export function groundCanvas(
   const pondY = Math.round(t.pond.y * H)
   for (let y = pondY; t.hasStream && y < H; y++) {
     const cx = Math.round(streamXAt(t, y / H) * W)
+    if (floating && !onLand(cx, y)) {
+      // past the island's edge the stream becomes a waterfall, falling into the clouds below
+      px(ctx, cx - 2, y, 5, 1, y % 4 < 2 ? '#e8f6ff' : '#bfe4fa')
+      if (rand() > 0.7) px(ctx, cx - 3 + Math.floor(rand() * 6), y, 1, 1, '#ffffff')
+      continue
+    }
     px(ctx, cx - 3, y, 1, 1, look.bank)
     px(ctx, cx + 3, y, 1, 1, look.bank)
     px(ctx, cx - 2, y, 5, 1, look.edge)
@@ -1142,6 +1427,14 @@ export function groundCanvas(
   // 6. main path (packed snow, dirt, or a plank boardwalk in the marsh), with the bridge over any stream
   for (let x = 0; x < W; x++) {
     const py = Math.round(pathYAt(t, x / W) * H)
+    if (floating && !onLand(x, py)) {
+      // between islands the path is a rope bridge of planks, strung with rails
+      px(ctx, x, py - 2, 1, 5, x % 3 === 0 ? '#7a5a30' : '#a67c4a')
+      px(ctx, x, py - 5, 1, 1, '#5a4a3a')
+      px(ctx, x, py + 4, 1, 1, '#5a4a3a')
+      if (x % 8 === 0) px(ctx, x, py - 5, 1, 10, '#5a4a3a')
+      continue
+    }
     px(ctx, x, py - 4, 1, 8, palette.path)
     px(ctx, x, py - 4, 1, 1, shift(palette.path, [-30, -30, -30]))
     px(ctx, x, py + 3, 1, 1, shift(palette.path, [-30, -30, -30]))
@@ -1192,6 +1485,10 @@ export function groundCanvas(
     for (let i = 0; i < 4; i++) drawReed(ctx, x + i * 2, y + (i % 2), 6 + ((i * 3) % 5))
   })
   scatter(extra.glow, (x, y) => drawGlowShroom(ctx, x, y))
+  scatter(extra.crystal, (x, y) => drawCrystal(ctx, x, y, 7 + Math.floor(rand() * 7), rand() > 0.5 ? 'cyan' : 'violet'))
+  const glowColors = ['#7ff0ff', '#ff8ad8', '#c8a8ff', '#ffe08a']
+  scatter(extra.glowflower, (x, y) => drawGlowFlower(ctx, x, y, glowColors[Math.floor(rand() * glowColors.length)]))
+  scatter(extra.lights, (x, y) => drawFairyLight(ctx, x, y))
 
   // 8. life on and around the water, drawn last so it sits on top
   const side = t.pond.x < 0.5 ? -1 : 1
@@ -1211,6 +1508,24 @@ export function groundCanvas(
     for (let i = 0; i < 4; i++) drawFootprints(ctx, pondX + Math.round((-26 + i * 16) * f), pondY + ry + 2 + (i % 2) * 3)
     for (let i = 0; i < 5; i++) drawReed(ctx, pondX - side * (14 - i * 4), pondY - ry + 2, 5 + (i % 3) * 2)
     px(ctx, pondX - 6, pondY, '#9fbcc0', 6, 1)
+  } else if (kind === 'sky') {
+    // a pool in the clouds: soft puffs of cloud around the rim and a few ripples
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2
+      drawCloudPuff(ctx, pondX + Math.round(Math.cos(a) * (rx - 2)), pondY + Math.round(Math.sin(a) * (ry - 2)) + 1, 0.7)
+    }
+    for (let i = 0; i < 3; i++) px(ctx, pondX - 10 + i * 9, pondY - 2 + (i % 2) * 4, '#ffffff', 5, 1)
+  } else if (kind === 'spirit') {
+    // a glowing pool: bright lily pads, drifting light motes and glowing reeds around the rim
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + 0.4
+      drawLilyPad(ctx, pondX + Math.round(Math.cos(a) * rx * 0.5), pondY + Math.round(Math.sin(a) * ry * 0.45), i % 2 === 0, look.edge)
+    }
+    for (let i = 0; i < 22; i++) px(ctx, pondX + Math.round((rand() - 0.5) * (rx * 1.7)), pondY + Math.round((rand() - 0.5) * (ry * 1.6)), '#bff8ff', 1, 1)
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2
+      drawGlowFlower(ctx, pondX + Math.round(Math.cos(a) * (rx + 1)), pondY + Math.round(Math.sin(a) * (ry + 1)), glowColors[i % glowColors.length])
+    }
   } else {
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2 + 0.3

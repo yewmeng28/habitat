@@ -68,7 +68,7 @@ describe('woodland placement', () => {
 })
 
 import { areaDef } from '../data/biomes'
-import { areaTerrain, isBlocked, pathYAt, streamXAt } from './terrain'
+import { areaTerrain, inLand, isBlocked, pathYAt, streamXAt } from './terrain'
 
 describe('terrain-aware placement', () => {
   it('is deterministic per area and differs between areas', () => {
@@ -217,6 +217,36 @@ describe('wildlife movement', () => {
           expect(wet(t, w, h, s), `${id} ${w}x${h} step ${i}`).toBe(false)
           expect(Math.hypot((s.x - t.pond.x * w) / t.pondRx, (s.y - t.pond.y * h) / t.pondRy)).toBeLessThan(2.2)
         }
+      }
+    }
+  })
+})
+
+describe('floating islands', () => {
+  it('only Skybound Peaks floats; everywhere else is all ground', () => {
+    expect(areaTerrain('skybound:0').floating).toBe(true)
+    for (const b of BIOMES.filter((x) => x.id !== 'skybound')) {
+      const t = areaTerrain(`${b.id}:0`)
+      expect(t.floating).toBe(false)
+      expect(inLand(t, 0.01, 0.01)).toBe(true)
+    }
+  })
+  it('has open sky at the corners and ground in the middle', () => {
+    for (let i = 0; i < 6; i++) {
+      const t = areaTerrain(`skybound:${i}`)
+      expect(inLand(t, 0.5, 0.5)).toBe(true)
+      for (const [x, y] of [[0.02, 0.02], [0.98, 0.02], [0.02, 0.98], [0.98, 0.98]]) expect(inLand(t, x, y)).toBe(false)
+    }
+  })
+  it('plants every tree well inside the island, never at the edge or over the sky', () => {
+    const b = BIOMES.find((x) => x.id === 'skybound')!
+    for (let a = 0; a < 6; a++) {
+      const id = `skybound:${a}`
+      const t = areaTerrain(id)
+      const capacity = areaDef(b, a).capacity
+      for (let i = 0; i < capacity; i++) {
+        const p = slotPosition(id, i, capacity)
+        expect(inLand(t, p.x, p.y, 0.05), `${id}#${i}`).toBe(true)
       }
     }
   })

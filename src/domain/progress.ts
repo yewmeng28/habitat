@@ -1,5 +1,5 @@
 import { BIOMES } from '../data/biomes'
-import { ACHIEVEMENTS, DISCOVERY_POINTS, WILDLIFE } from '../data/collection'
+import { ACHIEVEMENTS, DISCOVERY_POINTS, RARE_DISCOVERIES, WILDLIFE } from '../data/collection'
 import { SPECIES } from '../data/species'
 import { countsFor, currentStreak, isScheduledOn } from './habits'
 import type { DateKey, Discovery, DiscoveryKind, FocusSession, Habit, HabitCompletion, PlantedTree, Rule } from './types'
@@ -72,6 +72,11 @@ export function ruleProgress(rule: Rule, st: Stats): RuleProgress {
     case 'area-trees': return mk(st.maxAreaTrees, rule.n)
     case 'species-discovered': return mk(st.speciesUnlocked, rule.n)
     case 'habit-streak': return mk(st.bestHabitStreak, rule.n)
+    case 'all': {
+      // Progress adds up every part, so a combination shows one bar that fills as each piece is grown.
+      const parts = rule.rules.map((r) => ruleProgress(r, st))
+      return { met: parts.every((p) => p.met), current: parts.reduce((a, p) => a + p.current, 0), target: parts.reduce((a, p) => a + p.target, 0) }
+    }
   }
 }
 
@@ -89,6 +94,7 @@ export function requirementText(rule: Rule): string {
     case 'area-trees': return `Grow ${rule.n} trees in one area`
     case 'species-discovered': return `Unlock ${rule.n} tree species`
     case 'habit-streak': return `Reach a ${rule.n}-day habit streak`
+    case 'all': return rule.rules.map(requirementText).join(', and ')
   }
 }
 
@@ -113,6 +119,7 @@ export function pendingDiscoveries(st: Stats, existing: Pick<Discovery, 'kind' |
   for (const s of SPECIES) consider('species', s.id, s.unlock)
   for (const w of WILDLIFE) consider('wildlife', w.id, w.unlock)
   for (const a of ACHIEVEMENTS) consider('achievement', a.id, a.unlock)
+  for (const r of RARE_DISCOVERIES) consider('rare', r.id, r.unlock)
   for (const b of BIOMES) consider('biome', b.id, b.unlockTrees === 0 ? { type: 'always' } : { type: 'trees', n: b.unlockTrees })
   return out
 }

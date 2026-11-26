@@ -5,7 +5,7 @@ import { FloatingMenu } from './components/FloatingMenu'
 import { RotatePrompt } from './components/RotatePrompt'
 import { FocusBar } from './components/FocusBar'
 import { BIOMES } from './data/biomes'
-import { ACHIEVEMENTS, getWildlife } from './data/collection'
+import { ACHIEVEMENTS, RARE_DISCOVERIES, getWildlife } from './data/collection'
 import { getSpecies } from './data/species'
 import { remainingMs } from './domain/focus'
 import type { Discovery, PlantedTree } from './domain/types'
@@ -25,6 +25,7 @@ const DevToolsPage = import.meta.env.DEV ? lazy(() => import('./dev/DevToolsPage
 
 function describe(d: Discovery): string {
   if (d.kind === 'species') return `${getSpecies(d.itemId)?.name ?? d.itemId} unlocked`
+  if (d.kind === 'rare') return `${RARE_DISCOVERIES.find((r) => r.id === d.itemId)?.name ?? d.itemId} discovered`
   if (d.kind === 'biome') return `${BIOMES.find((b) => b.id === d.itemId)?.name ?? d.itemId} unlocked`
   if (d.kind === 'wildlife') return `${getWildlife(d.itemId)?.name ?? d.itemId} arrived`
   return ACHIEVEMENTS.find((a) => a.id === d.itemId)?.name ?? d.itemId

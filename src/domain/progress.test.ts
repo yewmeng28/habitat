@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ACHIEVEMENTS, WILDLIFE } from '../data/collection'
+import { ACHIEVEMENTS, RARE_DISCOVERIES, WILDLIFE } from '../data/collection'
 import { SPECIES } from '../data/species'
 import { computeStats, pendingDiscoveries, requirementText, ruleProgress, summarise, type StatsInput } from './progress'
 import type { FocusSession, PlantedTree } from './types'
@@ -64,8 +64,9 @@ describe('discoveries', () => {
   })
   it('every content definition has a valid, achievable rule', () => {
     const huge = computeStats({ ...input(60, 'birch', 3600), trees: Array.from({ length: 60 }, (_, i) => tree(i, ['oak', 'cherry-blossom', 'birch'][i % 3])) })
-    huge.treesByBiome = { tundra: 20, savannah: 20, marsh: 20 }
+    huge.treesByBiome = { tundra: 20, savannah: 20, marsh: 20, skybound: 20, fairy: 20 }
+    huge.treesBySpecies = { ...huge.treesBySpecies, cloudwood: 5, 'crystal-spire': 5, 'luminous-oak': 5 }
     huge.bestHabitStreak = 7 // streaks come from habits, covered in habits.test.ts
-    for (const d of [...SPECIES, ...WILDLIFE, ...ACHIEVEMENTS]) expect(ruleProgress(d.unlock, huge).met, d.id).toBe(true)
+    for (const d of [...SPECIES, ...WILDLIFE, ...ACHIEVEMENTS, ...RARE_DISCOVERIES]) expect(ruleProgress(d.unlock, huge).met, d.id).toBe(true)
   })
 })

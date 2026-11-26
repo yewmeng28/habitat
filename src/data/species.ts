@@ -33,6 +33,14 @@ export const SPECIES: SpeciesDef[] = [
   { id: 'mangrove', name: 'Mangrove', description: 'Arching stilt roots lift it above the tidal mud.', biomes: ['marsh'], unlock: { type: 'always' }, rarity: 'common' },
   { id: 'bald-cypress', name: 'Bald Cypress', description: 'Feathery needles and knobbly knees rising from the water.', biomes: ['marsh'], unlock: { type: 'biome-trees', biomeId: 'marsh', n: 3 }, rarity: 'uncommon' },
   { id: 'marsh-willow', name: 'Marsh Willow', description: 'Dark, trailing fronds hung with moss.', biomes: ['marsh'], unlock: { type: 'biome-trees', biomeId: 'marsh', n: 8 }, rarity: 'rare' },
+  // Skybound Peaks
+  { id: 'cloudwood', name: 'Cloudwood', description: 'Its crown is a small, drifting cloud that never quite rains.', biomes: ['skybound'], unlock: { type: 'always' }, rarity: 'uncommon' },
+  { id: 'crystal-spire', name: 'Crystal Spire', description: 'Faceted crystal grown tall, humming softly in the wind.', biomes: ['skybound'], unlock: { type: 'biome-trees', biomeId: 'skybound', n: 3 }, rarity: 'rare' },
+  { id: 'skyroot', name: 'Skyroot', description: 'A tree that floats on its own scrap of island, roots trailing in the air.', biomes: ['skybound'], unlock: { type: 'biome-trees', biomeId: 'skybound', n: 8 }, rarity: 'rare' },
+  // Enchanted Fairy Forest
+  { id: 'luminous-oak', name: 'Luminous Oak', description: 'A giant oak whose leaves glow from within.', biomes: ['fairy'], unlock: { type: 'always' }, rarity: 'uncommon' },
+  { id: 'moonwillow', name: 'Moonwillow', description: 'Silver fronds that shimmer and tip themselves with moonlight.', biomes: ['fairy'], unlock: { type: 'biome-trees', biomeId: 'fairy', n: 3 }, rarity: 'rare' },
+  { id: 'lantern-tree', name: 'Lantern Tree', description: 'Hung with fruit that burns like tiny lanterns.', biomes: ['fairy'], unlock: { type: 'biome-trees', biomeId: 'fairy', n: 8 }, rarity: 'rare' },
 ]
 
 export const getSpecies = (id: string) => SPECIES.find((s) => s.id === id)

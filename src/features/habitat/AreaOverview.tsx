@@ -7,6 +7,8 @@ const COLORS: Record<string, string> = {
   'snowy-pine': '#2f6b6b', 'frost-spruce': '#4a7f90', 'arctic-willow': '#9ab8a4',
   acacia: '#8aa83a', baobab: '#8a6a48', 'doum-palm': '#4f9a35',
   mangrove: '#2f6e32', 'bald-cypress': '#a8924a', 'marsh-willow': '#3f8068',
+  cloudwood: '#e8f2fc', 'crystal-spire': '#8fd8f8', skyroot: '#4fb89a',
+  'luminous-oak': '#2f8a80', moonwillow: '#9a98d8', 'lantern-tree': '#ffb040',
 }
 
 /**

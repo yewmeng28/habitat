@@ -107,8 +107,9 @@ export type Rule =
   | { type: 'area-trees'; n: number } // trees in a single area (density)
   | { type: 'species-discovered'; n: number } // distinct tree species unlocked
   | { type: 'habit-streak'; n: number } // best current habit streak
+  | { type: 'all'; rules: Rule[] } // every sub-rule must hold: used for rare combination discoveries
 
-export type DiscoveryKind = 'species' | 'wildlife' | 'achievement' | 'biome'
+export type DiscoveryKind = 'species' | 'wildlife' | 'achievement' | 'biome' | 'rare'
 
 /** First-time discovery of an item. Unique per kind+itemId, so awarding is idempotent. */
 export interface Discovery extends BaseRecord {

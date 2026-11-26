@@ -14,7 +14,7 @@ export interface TreeView {
   y: number
 }
 
-export type Behaviour = 'flutter' | 'hop' | 'perch' | 'shore' | 'walk'
+export type Behaviour = 'flutter' | 'hop' | 'perch' | 'shore' | 'walk' | 'glide'
 
 export interface WildlifeView {
   id: string
@@ -186,7 +186,7 @@ class WoodlandScene extends Phaser.Scene {
         const ang = Math.random() * Math.PI * 2
         const start =
           w.behaviour === 'shore' ? shoreTarget(this.terrain, this.world.w, this.world.h, ang)
-          : w.behaviour === 'flutter' ? { x: MARGIN + Math.random() * (this.world.w - 2 * MARGIN), y: MARGIN + Math.random() * (this.world.h - 2 * MARGIN), angle: ang }
+          : w.behaviour === 'flutter' || w.behaviour === 'glide' ? { x: MARGIN + Math.random() * (this.world.w - 2 * MARGIN), y: MARGIN + Math.random() * (this.world.h - 2 * MARGIN), angle: ang }
           : { ...dryPoint(this.terrain, this.world.w, this.world.h), angle: ang }
         const { x, y } = start
         const s = this.add.image(Math.round(x), Math.round(y), key).setOrigin(0.5, 1).setDepth(y)
@@ -205,6 +205,7 @@ class WoodlandScene extends Phaser.Scene {
     const frames = wildlifeFrames(c.id).moving.length
     let frame = 'idle'
     if (c.behaviour === 'flutter') frame = `m${Math.floor(c.flap / 110) % frames}` // butterflies never stop flapping
+    else if (c.behaviour === 'glide') frame = `m${Math.floor(c.flap / 380) % frames}` // slow, lazy wingbeats
     else if (c.behaviour === 'perch') frame = moving ? `m${Math.floor(c.flap / 70) % frames}` : 'idle' // up, level, down, level: about four beats a second
     else if (c.behaviour === 'walk') frame = moving && Math.floor(c.flap / 230) % 2 ? 'm0' : 'idle' // two-pose stride
     else if (moving) frame = 'm0'
@@ -238,6 +239,12 @@ class WoodlandScene extends Phaser.Scene {
       c.x1 = to ? to.x : c.x0
       c.y1 = to ? to.y : c.y0
       c.dur = to ? 320 : 200
+    } else if (c.behaviour === 'glide') {
+      // sky creatures (cloud rays) drift slowly and smoothly across the whole sky, over the island and beyond it
+      c.x1 = MARGIN + Math.random() * (w - 2 * MARGIN)
+      c.y1 = MARGIN + Math.random() * (h * 0.7)
+      c.dur = 5500 + Math.random() * 4500
+      c.arc = 0
     } else if (c.behaviour === 'walk') {
       // big animals (reindeer, zebra, giraffe, elephant) stride on dry ground, slower and further than hoppers
       const to = walkTarget(this.terrain, w, h, { x: c.x0, y: c.y0 })
@@ -286,7 +293,7 @@ class WoodlandScene extends Phaser.Scene {
     c.s.setDepth(c.behaviour === 'hop' || c.behaviour === 'shore' || c.behaviour === 'walk' ? y : 50000 + y)
     if (p >= 1) {
       c.dur = 0
-      c.wait = c.behaviour === 'walk' ? 900 + Math.random() * 3200 : c.behaviour === 'hop' || c.behaviour === 'shore' ? 400 + Math.random() * 2200 : c.behaviour === 'perch' ? 1500 + Math.random() * 3500 : 200 + Math.random() * 600
+      c.wait = c.behaviour === 'glide' ? 100 : c.behaviour === 'walk' ? 900 + Math.random() * 3200 : c.behaviour === 'hop' || c.behaviour === 'shore' ? 400 + Math.random() * 2200 : c.behaviour === 'perch' ? 1500 + Math.random() * 3500 : 200 + Math.random() * 600
     }
   }
 
@@ -335,14 +342,14 @@ class WoodlandScene extends Phaser.Scene {
     }
 
     // small specks that rise, sway and fade in and out (pollen, fireflies)
-    const specks = (key: string, color: string, count: number, peak: number) => {
+    const specks = (key: string, color: string, count: number, peak: number, off = 0) => {
       const tex = this.canvasTexture(key, 2, 2, (g) => {
         g.fillStyle = color
         g.fillRect(0, 0, 2, 2)
       })
       for (let i = 0; i < count; i++) {
-        const m = this.add.image(rnd(i + 20) * W, rnd(i + 40) * H, tex).setDepth(89000).setAlpha(0.2)
-        this.tweens.add({ targets: m, y: m.y - 14 - rnd(i) * 12, x: m.x + (rnd(i + 3) - 0.5) * 24, alpha: peak, duration: 2600 + rnd(i + 7) * 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd(i + 11) * 3000 })
+        const m = this.add.image(rnd(i + 20 + off) * W, rnd(i + 40 + off) * H, tex).setDepth(89000).setAlpha(0.2)
+        this.tweens.add({ targets: m, y: m.y - 14 - rnd(i + off) * 12, x: m.x + (rnd(i + 3 + off) - 0.5) * 24, alpha: peak, duration: 2600 + rnd(i + 7 + off) * 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: rnd(i + 11 + off) * 3000 })
         this.ambient.push(m)
       }
     }
@@ -378,6 +385,16 @@ class WoodlandScene extends Phaser.Scene {
         this.tweens.add({ targets: f, x: f.x + 6 + rnd(i) * 8, duration: 1800 + rnd(i + 9) * 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
         this.ambient.push(f)
       }
+    } else if (effect === 'clouds') {
+      // cloud wisps sliding across the island, with the odd glint of sun
+      drifting('sky-cloud', 64, 32, '#ffffff', 4, 0.5, 90500)
+      specks('sky-glint', '#ffffff', 10, 0.9)
+    } else if (effect === 'sparkles') {
+      // a faint violet haze and drifting points of cyan, pink and gold light
+      drifting('spirit-haze', 96, 40, '#7a6ad0', 3, 0.14, 90500)
+      specks('spark-cyan', '#7ff0ff', 9, 1)
+      specks('spark-pink', '#ff8ad8', 9, 1, 100)
+      specks('spark-gold', '#ffe08a', 9, 1, 200)
     } else {
       drifting('mist', 96, 40, '#c4dccb', 5, 0.2, 90500)
       specks('glow', '#8ff0d0', 12, 1)
