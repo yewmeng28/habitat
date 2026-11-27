@@ -37,32 +37,40 @@ await page.evaluate(async () => {
   const today = dates.todayKey()
   for (let back = 0; back < 12; back++)
     for (const [i, h] of created.entries()) {
-      if (back > 0 && (back + i) % 5 === 0) continue // a few gaps so it looks real
+      if (back >= 4 && (back + i) % 5 === 0) continue // a few older gaps so it looks real, with a healthy current streak
       if (back === 0 && i === 3) continue // leave one open today
       await repo.setCompletionCount(h, dates.addDays(today, -back), h.targetPerDay)
     }
   await repo.createChallenge({ name: 'Screen Time', mode: 'duration', target: 120, isScreenTime: true })
   await repo.createChallenge({ name: 'No sugary drinks', mode: 'avoidance', target: null, isScreenTime: false })
-  // The habitat opens on the biome of the most recent tree, so plant the tundra first and finish in the woodland
-  for (const sp of ['snowy-pine', 'frost-spruce']) await dev.plantInstantly(sp, 4, 25, 'tundra')
-  for (const sp of ['oak', 'pine', 'birch', 'maple', 'cherry-blossom']) await dev.plantInstantly(sp, 4, 25, 'woodland')
-  await dev.plantInstantly('willow', 3, 25, 'woodland')
+  // Enough trees in each world to unlock the first four (15, 35 and 60 trees in total) and fill them in
+  const planting = [
+    ['tundra', ['snowy-pine', 'frost-spruce']],
+    ['savannah', ['acacia', 'baobab']],
+    ['marsh', ['mangrove', 'bald-cypress']],
+    ['woodland', ['oak', 'pine', 'birch', 'maple', 'cherry-blossom', 'willow']],
+  ]
+  for (const [biome, species] of planting) for (const sp of species) await dev.plantInstantly(sp, 4, 25, biome)
   await dev.addEnergy(60)
   await repo.updatePreferences({ dayNight: 'day', seasons: 'summer' })
 })
 
 const shots = [
   ['growth', '#/growth'],
-  ['habitat', '#/habitat'],
+  ['habitat-woodland', '#/habitat', 'woodland'],
+  ['habitat-tundra', '#/habitat', 'tundra'],
+  ['habitat-savannah', '#/habitat', 'savannah'],
+  ['habitat-marsh', '#/habitat', 'marsh'],
   ['collection', '#/collection'],
   ['challenges', '#/challenges'],
   ['insights', '#/insights'],
   ['focus', '#/focus'],
 ]
-for (const [name, hash] of shots) {
+for (const [name, hash, biome] of shots) {
   await page.goto(BASE + hash)
+  if (biome) await page.evaluate((b) => localStorage.setItem('habitat.selectedBiome', b), biome) // which world the habitat opens on
   await page.reload() // fresh read of the seeded data
-  await page.waitForTimeout(name === 'habitat' ? 4000 : 1200)
+  await page.waitForTimeout(biome ? 4000 : 1200)
   await page.screenshot({ path: `${OUT}${name}.png` })
   console.log('saved', name)
 }

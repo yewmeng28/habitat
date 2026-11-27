@@ -7,7 +7,7 @@ Habitat turns the things you do for yourself into a living world. Track your hab
 It works in your phone's browser, can be added to your home screen like an app, and keeps everything on your device. There is no account to make and nothing to sign up for.
 
 <p align="center">
-  <img src="docs/screenshots/habitat.png" width="240" alt="A pixel-art woodland full of trees you have grown">
+  <img src="docs/screenshots/habitat-woodland.png" width="240" alt="A pixel-art woodland full of trees you have grown">
   <img src="docs/screenshots/growth.png" width="240" alt="Today's habits with streaks and progress">
   <img src="docs/screenshots/collection.png" width="240" alt="The collection of trees, wildlife and discoveries">
 </p>
@@ -39,7 +39,12 @@ You start in the **Woodland Sanctuary**. Plant more trees to open new worlds:
 | Skybound Peaks | 90 trees | A floating island among the clouds |
 | Enchanted Fairy Forest | 130 trees | Glowing trees and lights at night |
 
-<p align="center"><img src="docs/screenshots/habitat.png" width="260" alt="The habitat"></p>
+<p align="center">
+  <img src="docs/screenshots/habitat-woodland.png" width="200" alt="The Woodland Sanctuary">
+  <img src="docs/screenshots/habitat-tundra.png" width="200" alt="The Frozen Tundra">
+  <img src="docs/screenshots/habitat-savannah.png" width="200" alt="The Golden Savannah">
+  <img src="docs/screenshots/habitat-marsh.png" width="200" alt="The Whispering Marsh">
+</p>
 
 ### Collect and discover
 Every tree species, creature and rare find you uncover is kept in your **Collection**, along with achievements for streaks, focus time and exploring. Some discoveries are rare and turn up only now and then.

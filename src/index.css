@@ -248,7 +248,9 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .immersive-habitat .nav { display: none; } /* replaced by the floating menu button */
 .immersive-habitat .toast { position: fixed; left: 16px; right: 16px; top: calc(env(safe-area-inset-top) + 64px); margin: 0; z-index: 17; }
 .habitat-immersive { display: block; }
-.game-frame.full { position: fixed; inset: 0; z-index: 1; margin: 0; border: 0; border-radius: 0; }
+/* If the phone reports a viewport slightly short of the screen (iOS does this on a cold start), the page behind is world-coloured, not cream. */
+html:has(.immersive-habitat), html:has(.immersive-habitat) body { background: #2a3a24; }
+.game-frame.full { position: fixed; inset: 0; bottom: calc(-1 * env(safe-area-inset-bottom, 0px)); z-index: 1; margin: 0; border: 0; border-radius: 0; }
 .game-frame.full .game-host { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; }
 .game-frame.full .game-empty { bottom: calc(env(safe-area-inset-bottom) + 84px); }
 .game-frame.full .tree-info { top: calc(env(safe-area-inset-top) + 64px); }
