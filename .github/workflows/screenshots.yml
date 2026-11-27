@@ -1,0 +1,48 @@
+name: Update screenshots
+
+# Regenerates the README screenshots (iPhone 16 size) whenever main is pushed, and commits them if they changed.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/screenshots/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # The seed data comes from dev-only helpers, so the screenshots are taken against the dev server.
+      - name: Start the dev server
+        run: |
+          npm run dev -- --port 5173 > dev.log 2>&1 &
+          npx --yes wait-on http://localhost:5173 --timeout 60000
+
+      - run: npm run screenshots
+
+      - name: Commit changed screenshots
+        run: |
+          mkdir -p docs/screenshots
+          if git diff --quiet -- docs/screenshots && [ -z "$(git ls-files --others --exclude-standard docs/screenshots)" ]; then
+            echo "Screenshots unchanged"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          git commit -m "Update screenshots [skip ci]"
+          git push
