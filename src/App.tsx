@@ -190,7 +190,7 @@ export default function App() {
         ) : (
           <ErrorBoundary key={pathname}>
           <Routes>
-            <Route path="/" element={<Navigate to="/growth" replace />} />
+            <Route path="/" element={<Navigate to="/habitat" replace />} />
             <Route path="/growth" element={<GrowthPage data={data} />} />
             <Route path="/challenges" element={<ChallengesPage data={data} />} />
             <Route path="/insights" element={<InsightsPage data={data} />} />
@@ -215,7 +215,7 @@ export default function App() {
             {DevToolsPage && (
               <Route path="/test" element={<Suspense fallback={null}><DevToolsPage data={data} /></Suspense>} />
             )}
-            <Route path="*" element={<Navigate to="/growth" replace />} />
+            <Route path="*" element={<Navigate to="/habitat" replace />} />
           </Routes>
           </ErrorBoundary>
         )}

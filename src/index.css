@@ -72,6 +72,11 @@ ul { list-style: none; padding: 0; margin: 0; }
   padding-bottom: var(--nav-pad);
 }
 .nav nav { display: flex; }
+/* iOS can report a viewport a little short of the screen on a cold start, which leaves a strip under a bottom-anchored bar.
+   Let the bar run past the bottom edge by the safe-area height (and pad it by the same amount) so it always reaches the screen edge. */
+@media (max-width: 767px) {
+  .nav { bottom: calc(-1 * env(safe-area-inset-bottom, 0px)); padding-bottom: calc(var(--nav-pad) + env(safe-area-inset-bottom, 0px)); }
+}
 .brand, .nav .nav-settings { display: none; }
 .nav-link {
   flex: 1; min-height: var(--nav-h); min-width: 0;

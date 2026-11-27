@@ -43,14 +43,14 @@ await page.evaluate(async () => {
     }
   await repo.createChallenge({ name: 'Screen Time', mode: 'duration', target: 120, isScreenTime: true })
   await repo.createChallenge({ name: 'No sugary drinks', mode: 'avoidance', target: null, isScreenTime: false })
-  // Enough trees in each world to unlock the first four (15, 35 and 60 trees in total) and fill them in
+  // Enough trees in each world to unlock the first four (15, 35 and 60 trees in total; this plants 66) and fill them in
   const planting = [
     ['tundra', ['snowy-pine', 'frost-spruce']],
     ['savannah', ['acacia', 'baobab']],
     ['marsh', ['mangrove', 'bald-cypress']],
     ['woodland', ['oak', 'pine', 'birch', 'maple', 'cherry-blossom', 'willow']],
   ]
-  for (const [biome, species] of planting) for (const sp of species) await dev.plantInstantly(sp, 4, 25, biome)
+  for (const [biome, species] of planting) for (const sp of species) await dev.plantInstantly(sp, biome === 'woodland' ? 5 : 6, 25, biome)
   await dev.addEnergy(60)
   await repo.updatePreferences({ dayNight: 'day', seasons: 'summer' })
 })
