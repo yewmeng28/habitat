@@ -74,9 +74,14 @@ const WORLDS = [
   { w: 224, h: 384 }, // portrait
 ]
 
+/** Trees keep to this band of the height, so the top and bottom bars never cover one. */
+export const TREE_MIN_Y = 0.2
+export const TREE_MAX_Y = 0.82
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
 function treeBlockedIn(t: Terrain, nx: number, ny: number, W: number, H: number): boolean {
+  if (ny < TREE_MIN_Y || ny > TREE_MAX_Y) return true
   const x = nx * W
   const y = ny * H
   const pondX = t.pond.x * W
@@ -118,7 +123,7 @@ export function resolvePosition(areaKey: string, pos: { x: number; y: number }):
     for (let a = 0; a < 24; a++) {
       const ang = (a / 24) * Math.PI * 2
       const x = clamp(pos.x + Math.cos(ang) * r, 0.06, 0.94)
-      const y = clamp(pos.y + Math.sin(ang) * r, 0.06, 0.94)
+      const y = clamp(pos.y + Math.sin(ang) * r, TREE_MIN_Y, TREE_MAX_Y)
       if (!isBlocked(t, x, y)) return { x, y }
     }
   }

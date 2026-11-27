@@ -271,3 +271,21 @@ class Scape {
     })
   }
 }
+
+/** A short soft tick for UI taps, played only when the player has turned click sounds on. */
+export function playClick(vol: number) {
+  const c = context()
+  if (!c || c.state !== 'running') return
+  const t = c.currentTime
+  const osc = c.createOscillator()
+  const g = c.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(900, t)
+  osc.frequency.exponentialRampToValueAtTime(500, t + 0.05)
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * 0.25), t + 0.005)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07)
+  osc.connect(g).connect(c.destination)
+  osc.start(t)
+  osc.stop(t + 0.08)
+}

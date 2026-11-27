@@ -14,6 +14,7 @@ export interface Display {
   motion: MotionMode
   sound: boolean
   music: boolean
+  clicks: boolean
   volume: number // 0..1
 }
 
@@ -25,6 +26,7 @@ export const DEFAULT_DISPLAY: Display = {
   motion: 'auto',
   sound: false, // sound and music start off: nothing plays until the player asks for it
   music: false,
+  clicks: false,
   volume: 0.5,
 }
 

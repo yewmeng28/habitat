@@ -42,7 +42,7 @@ function Toggle({ label, checked, onChange, hint }: { label: string; checked: bo
 export function SettingsPage({ display }: { display: Display }) {
   // Changes save at once. Turning sound on is a tap, which is also what lets the browser start audio.
   const set = (patch: Partial<Display>) => {
-    if (patch.sound || patch.music) unlockAudio()
+    if (patch.sound || patch.music || patch.clicks) unlockAudio()
     void updatePreferences(patch)
   }
   const fileRef = useRef<HTMLInputElement>(null)
@@ -110,6 +110,7 @@ export function SettingsPage({ display }: { display: Display }) {
         <p className="muted small">Gentle sounds made on your device, with nothing to download. Off until you turn it on, and heard in the habitat and during a focus session.</p>
         <Toggle label="Ambient sounds" hint="Wind, birds, frogs and chimes, different in each biome." checked={display.sound} onChange={(v) => set({ sound: v })} />
         <Toggle label="Music" hint="Slow, quiet and different every time." checked={display.music} onChange={(v) => set({ music: v })} />
+        <Toggle label="Click sounds" hint="A soft tick when you tap buttons and links." checked={display.clicks} onChange={(v) => set({ clicks: v })} />
         <label className="setting">
           <span>Volume</span>
           <input type="range" min={0} max={1} step={0.05} value={display.volume} onChange={(e) => set({ volume: Number(e.target.value) })} aria-label="Volume" />

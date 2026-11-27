@@ -16,6 +16,7 @@ import { GrowthPage } from './features/growth/GrowthPage'
 import { HabitatPage } from './features/habitat/HabitatPage'
 import { InsightsPage } from './features/insights/InsightsPage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { playClick } from './audio/soundscape'
 import { useAppData, useIsPhone } from './hooks'
 import { settleOpenSession } from './persistence/focusRepo'
 import { syncDiscoveries } from './persistence/progressRepo'
@@ -45,6 +46,16 @@ const NAV = [
 
 export default function App() {
   const data = useAppData()
+  const clicks = data?.display.clicks ?? false
+  const clickVolume = data?.display.volume ?? 0.5
+  useEffect(() => {
+    if (!clicks) return
+    const onClick = (e: MouseEvent) => {
+      if ((e.target as Element | null)?.closest?.('button, a, [role="button"], input[type="checkbox"], select, summary')) playClick(clickVolume)
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [clicks, clickVolume])
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const isPhone = useIsPhone()

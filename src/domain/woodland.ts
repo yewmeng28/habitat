@@ -1,6 +1,6 @@
 import { areaDef, areaId, parseAreaId, type BiomeDef } from '../data/biomes'
 import { hash, mulberry32 } from './rng'
-import { areaTerrain, isBlocked } from './terrain'
+import { TREE_MAX_Y, TREE_MIN_Y, areaTerrain, isBlocked } from './terrain'
 import type { PlantedTree, TreePosition } from './types'
 
 /**
@@ -47,7 +47,7 @@ export function slotPosition(id: string, index: number, capacity: number): TreeP
   const jr = mulberry32(hash(`${id}#${index}`))
   const clamp = (v: number) => Math.min(0.94, Math.max(0.06, v))
   let x = clamp(cell.cx + (jr() - 0.5) * 0.5 * cell.w)
-  let y = clamp(cell.cy + (jr() - 0.5) * 0.5 * cell.h)
+  let y = Math.min(TREE_MAX_Y, Math.max(TREE_MIN_Y, cell.cy + (jr() - 0.5) * 0.5 * cell.h))
   if (isBlocked(terrain, x, y)) {
     x = cell.cx
     y = cell.cy
