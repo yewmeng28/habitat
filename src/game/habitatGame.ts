@@ -586,11 +586,32 @@ export function createHabitatGame(parent: HTMLElement, opts: Options): HabitatGa
     scale: { mode: Phaser.Scale.RESIZE, width: parent.clientWidth || 320, height: parent.clientHeight || 224 },
     scene,
   })
+  // Phaser only re-reads the container size on window resizes and a slow timer. On a phone the visible height settles
+  // after load (address bar, safe areas, the immersive layout switching on), which could leave a strip of empty space
+  // until the next tab change. So follow the container itself, and re-measure a few times just after start.
+  const remeasure = () => {
+    const w = parent.clientWidth
+    const h = parent.clientHeight
+    if (!w || !h || !game.scale) return
+    if (game.scale.width !== w || game.scale.height !== h) game.scale.resize(w, h)
+    game.scale.refresh()
+  }
+  const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(remeasure) : null
+  observer?.observe(parent)
+  window.visualViewport?.addEventListener('resize', remeasure)
+  window.addEventListener('orientationchange', remeasure)
+  const timers = [100, 400, 1000, 2500].map((ms) => window.setTimeout(remeasure, ms))
   return {
     setArea: (area) => scene.setArea(area),
     setSettings: (settings) => scene.setSettings(settings),
     pan: (dx, dy) => scene.panBy(dx, dy),
     zoom: (factor) => scene.zoomStep(factor),
-    destroy: () => game.destroy(true),
+    destroy: () => {
+      observer?.disconnect()
+      window.visualViewport?.removeEventListener('resize', remeasure)
+      window.removeEventListener('orientationchange', remeasure)
+      timers.forEach(window.clearTimeout)
+      game.destroy(true)
+    },
   }
 }

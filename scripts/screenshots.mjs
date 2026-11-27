@@ -43,9 +43,10 @@ await page.evaluate(async () => {
     }
   await repo.createChallenge({ name: 'Screen Time', mode: 'duration', target: 120, isScreenTime: true })
   await repo.createChallenge({ name: 'No sugary drinks', mode: 'avoidance', target: null, isScreenTime: false })
+  // The habitat opens on the biome of the most recent tree, so plant the tundra first and finish in the woodland
+  for (const sp of ['snowy-pine', 'frost-spruce']) await dev.plantInstantly(sp, 4, 25, 'tundra')
   for (const sp of ['oak', 'pine', 'birch', 'maple', 'cherry-blossom']) await dev.plantInstantly(sp, 4, 25, 'woodland')
   await dev.plantInstantly('willow', 3, 25, 'woodland')
-  for (const sp of ['snowy-pine', 'frost-spruce']) await dev.plantInstantly(sp, 4, 25, 'tundra')
   await dev.addEnergy(60)
   await repo.updatePreferences({ dayNight: 'day', seasons: 'summer' })
 })
